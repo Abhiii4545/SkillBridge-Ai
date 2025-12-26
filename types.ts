@@ -48,6 +48,8 @@ export interface Application {
   status: 'Pending' | 'Shortlisted' | 'Rejected' | 'Accepted';
   appliedDate: string;
   matchScore: number;
+  resumeBase64?: string;
+  resumeMimeType?: string;
 }
 
 export interface ChatMessage {
@@ -57,9 +59,68 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
+export interface LearningRoadmap {
+  readinessScore: number;
+  strongSkills: { skill: string; reason: string }[];
+  skillsToImprove: { skill: string; reason: string }[];
+  skillsToLearn: { skill: string; reason: string }[];
+  roadmap: {
+    month: string;
+    skills: string[];
+    tools: string[];
+    task: string;
+  }[];
+  recommendedProjects: {
+    name: string;
+    skillsCovered: string[];
+    reason: string;
+  }[];
+  profileSuggestions: string[];
+  nextImmediateStep: string;
+}
+
 export type ViewState = 'landing' | 'login' | 'student-onboarding' | 'student-dashboard' | 'recruiter-dashboard';
 
 export interface SectionProps {
   id: string;
   className?: string;
+}
+
+// --- Resume Builder Types ---
+
+export interface EducationItem {
+  id: string;
+  institution: string;
+  degree: string;
+  year: string;
+  gpa: string;
+}
+
+export interface ProjectItem {
+  id: string;
+  title: string;
+  techStack: string[];
+  description: string;
+}
+
+export interface ExperienceItem {
+  id: string;
+  company: string;
+  role: string;
+  duration: string;
+  description: string;
+}
+
+export interface ResumeData {
+  fullName: string;
+  email: string;
+  phone: string;
+  linkedin: string;
+  github: string;
+  education: EducationItem[];
+  skills: string[];
+  projects: ProjectItem[];
+  experience: ExperienceItem[];
+  certifications: string[];
+  summary: string;
 }

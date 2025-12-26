@@ -24,7 +24,7 @@ const InternshipCard: React.FC<InternshipCardProps> = ({ internship, onApply, ha
   };
 
   return (
-    <div className="bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-500/30 transition-all duration-300 overflow-hidden group">
+    <div className="bg-white dark:bg-[#0a0a16] rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-500/30 transition-all duration-300 overflow-hidden group">
       <div className="p-6">
         <div className="flex justify-between items-start">
           <div className="flex gap-4">
@@ -76,9 +76,9 @@ const InternshipCard: React.FC<InternshipCardProps> = ({ internship, onApply, ha
              <div className="flex -space-x-2 overflow-hidden pl-1">
                 {/* Simulated 'Applicants' avatars */}
                 {[1,2,3].map(i => (
-                    <div key={i} className="inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-[#101025] bg-slate-200 dark:bg-slate-700"></div>
+                    <div key={i} className="inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-[#0a0a16] bg-slate-200 dark:bg-slate-700"></div>
                 ))}
-                <span className="ml-4 text-xs font-medium text-slate-500 dark:text-slate-400 self-center">+12 applied</span>
+                <span className="ml-4 text-xs font-medium text-slate-500 dark:text-slate-400 self-center">+{(internship.applicants || 0) > 3 ? (internship.applicants || 0) : '12'} applied</span>
              </div>
              
              <button 

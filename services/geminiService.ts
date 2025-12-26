@@ -1,8 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Internship, UserProfile } from "../types";
+import { Internship, UserProfile, LearningRoadmap, ResumeData } from "../types";
 
 // Initialize Gemini Client
-// IMPORTANT: Accessing process.env.API_KEY directly as per instructions.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const MODEL_NAME = 'gemini-3-flash-preview';
@@ -10,17 +9,18 @@ const MODEL_NAME = 'gemini-3-flash-preview';
 export const analyzeResume = async (base64Data: string, mimeType: string = 'application/pdf'): Promise<UserProfile> => {
   try {
     const prompt = `
-      You are an expert career consultant for B.Tech students in Hyderabad.
+      You are an expert career consultant for B.Tech students.
       Analyze the provided resume document.
-      Extract the following information in JSON format:
-      - Name
-      - Email
-      - University/College Name (if found)
-      - List of Skills (technical and soft skills)
-      - A short professional summary (2-3 sentences)
-      - Experience Level (Student, Junior, Mid-Level)
       
-      Also, based on the skills found, identify 3 critical "missing skills" that would make this candidate highly employable in the Hyderabad tech ecosystem (e.g., if they know React, maybe they miss TypeScript or Cloud).
+      CRITICAL: OUTPUT ENGLISH ONLY.
+      
+      Extract:
+      - Name, Email
+      - University
+      - Skills (Array of strings)
+      - Summary
+      - Experience Level
+      - Identify 3 missing skills for a generic tech role in Hyderabad.
     `;
 
     const response = await ai.models.generateContent({
@@ -53,10 +53,9 @@ export const analyzeResume = async (base64Data: string, mimeType: string = 'appl
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response from Gemini");
-
-    return JSON.parse(text) as UserProfile;
+    const text = response.text || "{}";
+    const cleanText = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(cleanText) as UserProfile;
   } catch (error) {
     console.error("Error analyzing resume:", error);
     throw error;
@@ -65,26 +64,24 @@ export const analyzeResume = async (base64Data: string, mimeType: string = 'appl
 
 export const matchInternships = async (profile: UserProfile, internships: Internship[]): Promise<Internship[]> => {
   try {
-    // For a production app, we would process this in smaller batches or use embeddings.
-    // For this demo, we'll send the profile summary/skills and the internship list to Gemini to rank.
-    
     const internshipBriefs = internships.map(i => ({
       id: i.id,
       title: i.title,
       company: i.company,
-      requiredSkills: i.requiredSkills
+      requiredSkills: i.requiredSkills,
+      description: i.description
     }));
 
     const prompt = `
-      I have a student with these skills: ${profile.skills.join(', ')}.
+      Student Skills: ${profile.skills.join(', ')}.
       Summary: ${profile.summary}.
       
-      Here is a list of internships: ${JSON.stringify(internshipBriefs)}.
+      Internships: ${JSON.stringify(internshipBriefs)}.
       
-      Rank these internships by relevance to the student.
-      For each internship, assign a "matchScore" (0-100) and a short one-sentence "matchReason" explaining why it's a good or bad fit.
+      Rank internships by relevance.
+      For each, provide "matchScore" (0-100) and "matchReason" (1 sentence).
       
-      Return a JSON array of objects containing { id, matchScore, matchReason }.
+      OUTPUT: ENGLISH ONLY.
     `;
 
     const response = await ai.models.generateContent({
@@ -106,11 +103,13 @@ export const matchInternships = async (profile: UserProfile, internships: Intern
       }
     });
 
-    const rankings = JSON.parse(response.text || '[]') as { id: string, matchScore: number, matchReason: string }[];
+    const text = response.text || '[]';
+    const cleanText = text.replace(/```json|```/g, '').trim();
+    const rankings = JSON.parse(cleanText);
 
     // Merge rankings back into full internship objects
     const rankedInternships = internships.map(internship => {
-      const rank = rankings.find(r => r.id === internship.id);
+      const rank = rankings.find((r: any) => r.id === internship.id);
       return {
         ...internship,
         matchScore: rank?.matchScore || 0,
@@ -123,9 +122,55 @@ export const matchInternships = async (profile: UserProfile, internships: Intern
 
   } catch (error) {
     console.error("Error matching internships:", error);
-    // Fallback: simple text match if API fails
     return internships.map(i => ({...i, matchScore: 50, matchReason: "Basic match logic applied."}));
   }
+};
+
+export const generateCareerPath = async (profile: UserProfile, targetRole: string, targetCompany: string): Promise<LearningRoadmap> => {
+    const prompt = `
+      Profile Skills: ${profile.skills.join(', ')}.
+      Experience: ${profile.experienceLevel}.
+      Target: ${targetRole} at ${targetCompany}.
+
+      Generate a Career Roadmap.
+      
+      CRITICAL: OUTPUT MUST BE ENGLISH ONLY.
+      
+      Required Fields in JSON:
+      - readinessScore (0-100)
+      - strongSkills (Array of {skill, reason})
+      - skillsToImprove (Array of {skill, reason})
+      - skillsToLearn (Array of {skill, reason})
+      - roadmap (Array of {month, skills (array), tools (array), task})
+      - recommendedProjects (Array of {name, skillsCovered (array), reason})
+      - profileSuggestions (Array of strings)
+      - nextImmediateStep (String)
+    `;
+
+    const response = await ai.models.generateContent({
+        model: MODEL_NAME,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    readinessScore: { type: Type.NUMBER },
+                    strongSkills: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { skill: { type: Type.STRING }, reason: { type: Type.STRING } } } },
+                    skillsToImprove: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { skill: { type: Type.STRING }, reason: { type: Type.STRING } } } },
+                    skillsToLearn: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { skill: { type: Type.STRING }, reason: { type: Type.STRING } } } },
+                    roadmap: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { month: { type: Type.STRING }, skills: { type: Type.ARRAY, items: { type: Type.STRING } }, tools: { type: Type.ARRAY, items: { type: Type.STRING } }, task: { type: Type.STRING } } } },
+                    recommendedProjects: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, skillsCovered: { type: Type.ARRAY, items: { type: Type.STRING } }, reason: { type: Type.STRING } } } },
+                    profileSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    nextImmediateStep: { type: Type.STRING }
+                }
+            }
+        }
+    });
+
+    const text = response.text || '{}';
+    const cleanText = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(cleanText) as LearningRoadmap;
 };
 
 export const getChatResponse = async (history: {role: string, parts: {text: string}[]}[], message: string): Promise<string> => {
@@ -133,10 +178,92 @@ export const getChatResponse = async (history: {role: string, parts: {text: stri
         model: MODEL_NAME,
         history: history,
         config: {
-            systemInstruction: "You are SkillBridge, a helpful, encouraging career mentor for a B.Tech student in Hyderabad. Keep answers concise, actionable, and encouraging. Focus on tech careers, internships, and skill building."
+            systemInstruction: "You are AstraX, a helpful, encouraging career mentor for a B.Tech student. Keep answers concise, actionable, and encouraging. Focus on tech careers, internships, and skill building. ALWAYS SPEAK IN ENGLISH."
         }
     });
 
     const result = await chat.sendMessage({ message });
     return result.text || "I'm sorry, I couldn't generate a response.";
+};
+
+// --- New Resume Generation Service ---
+export const generateATSResume = async (currentData: Partial<ResumeData>): Promise<ResumeData> => {
+    const prompt = `
+      Act as an expert ATS Resume Writer. I will provide raw data about a candidate.
+      Your job is to polish this data into a high-scoring, professional ATS-optimized resume format.
+      
+      Raw Data:
+      ${JSON.stringify(currentData)}
+      
+      Instructions:
+      1. Summary: Write a compelling 3-4 line professional summary emphasizing their key skills and experience level.
+      2. Projects: Rewrite project descriptions to use the STAR method (Situation, Task, Action, Result). Use strong action verbs (e.g., "Engineered", "Deployed", "Optimized").
+      3. Experience: Polish experience bullets to be quantifiable if possible.
+      4. Skills: Group them logically if not already.
+      5. Output JSON matching the ResumeData interface structure exactly.
+      
+      CRITICAL: Output valid JSON only. English Language.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: MODEL_NAME,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    fullName: { type: Type.STRING },
+                    email: { type: Type.STRING },
+                    phone: { type: Type.STRING },
+                    linkedin: { type: Type.STRING },
+                    github: { type: Type.STRING },
+                    education: { 
+                        type: Type.ARRAY, 
+                        items: { 
+                            type: Type.OBJECT, 
+                            properties: { 
+                                id: { type: Type.STRING }, 
+                                institution: { type: Type.STRING }, 
+                                degree: { type: Type.STRING }, 
+                                year: { type: Type.STRING }, 
+                                gpa: { type: Type.STRING } 
+                            } 
+                        } 
+                    },
+                    skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    projects: { 
+                        type: Type.ARRAY, 
+                        items: { 
+                            type: Type.OBJECT, 
+                            properties: { 
+                                id: { type: Type.STRING }, 
+                                title: { type: Type.STRING }, 
+                                techStack: { type: Type.ARRAY, items: { type: Type.STRING } }, 
+                                description: { type: Type.STRING } 
+                            } 
+                        } 
+                    },
+                    experience: { 
+                        type: Type.ARRAY, 
+                        items: { 
+                            type: Type.OBJECT, 
+                            properties: { 
+                                id: { type: Type.STRING }, 
+                                company: { type: Type.STRING }, 
+                                role: { type: Type.STRING }, 
+                                duration: { type: Type.STRING }, 
+                                description: { type: Type.STRING } 
+                            } 
+                        } 
+                    },
+                    certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    summary: { type: Type.STRING }
+                }
+            }
+        }
+    });
+
+    const text = response.text || '{}';
+    return JSON.parse(text) as ResumeData;
 };

@@ -13,36 +13,62 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, isLoggedIn, userRole, onLogout, darkMode, toggleTheme }) => {
+  const isLanding = currentView === 'landing';
+  
+  const scrollTo = (id: string) => {
+      if (!isLanding) {
+          onNavigate('landing');
+          // Allow navigation to happen then scroll
+          setTimeout(() => {
+              const element = document.getElementById(id);
+              if (element) element.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+      } else {
+          const element = document.getElementById(id);
+          if (element) element.scrollIntoView({ behavior: 'smooth' });
+      }
+  };
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 radion-glass transition-all duration-300">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isLanding ? 'bg-black/70 backdrop-blur-md border-b border-white/5' : 'bg-white/70 dark:bg-black/70 backdrop-blur-md border-b border-slate-200 dark:border-white/5'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           <div 
             className="flex items-center cursor-pointer group"
             onClick={() => onNavigate('landing')}
           >
-            <div className="btn-bubble bubble-primary p-2 mr-3 group-hover:rotate-12 transition-transform">
-              <Brain className="h-6 w-6 text-white" />
+            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center mr-3 group-hover:rotate-12 transition-transform shadow-lg shadow-blue-500/20">
+              <Brain className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white group-hover:text-radion-primary transition-colors">
-              SkillBridge<span className="text-radion-primary">.ai</span>
+            <span className={`font-bold text-xl tracking-tight transition-colors ${isLanding ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+              AstraX<span className="text-blue-500">.ai</span>
             </span>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6">
             
-            {/* Theme Toggle */}
-            <button 
-              onClick={toggleTheme}
-              className="p-2.5 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors btn-bubble bubble-dark border-0"
-              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+            {isLanding && (
+                <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
+                    <button onClick={() => scrollTo('problem')} className="hover:text-white transition-colors">The Problem</button>
+                    <button onClick={() => scrollTo('rankflow')} className="hover:text-white transition-colors text-purple-400">Rankflow</button>
+                    <button onClick={() => scrollTo('features')} className="hover:text-white transition-colors">Features</button>
+                    <button onClick={() => scrollTo('testimonials')} className="hover:text-white transition-colors">Success Stories</button>
+                </div>
+            )}
+
+            {!isLanding && (
+                <button 
+                onClick={toggleTheme}
+                className="p-2.5 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+            )}
 
             {isLoggedIn ? (
               <>
-                 <span className="hidden sm:inline-block px-4 py-1.5 bg-slate-100 dark:bg-white/5 rounded-full text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide border border-slate-200 dark:border-white/10">
+                 <span className={`hidden sm:inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border ${isLanding ? 'bg-white/5 text-slate-300 border-white/10' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'}`}>
                     {userRole === 'student' ? 'Student Portal' : 'Recruiter Portal'}
                  </span>
                  <button 
@@ -57,7 +83,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, isLoggedIn, us
               <div className="flex items-center gap-3">
                  <button 
                    onClick={() => onNavigate('login')}
-                   className="hidden md:flex text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 text-sm font-bold transition-colors"
+                   className={`hidden md:flex text-sm font-bold transition-colors ${isLanding ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white'}`}
                  >
                    Sign In
                  </button>

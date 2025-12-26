@@ -1,23 +1,38 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { UserProfile, Internship, Application } from '../types';
-import { matchInternships } from '../services/geminiService';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { UserProfile, Internship, Application, LearningRoadmap } from '../types';
+import { matchInternships, generateCareerPath } from '../services/geminiService';
 import InternshipCard from './InternshipCard';
 import ChatWidget from './ChatWidget';
-import { MOCK_INTERNSHIPS } from '../constants';
-import { Loader2, User, Award, TrendingUp, RefreshCw, Sparkles, MapPin, Building2, ArrowRight, Search, Filter, Briefcase, FileText } from 'lucide-react';
+import ResumeBuilder from './ResumeBuilder';
+import { Loader2, User, Award, TrendingUp, RefreshCw, Sparkles, MapPin, Building2, ArrowRight, Search, Filter, Briefcase, FileText, Target, Calendar, CheckSquare, BarChart2, ChevronDown, ChevronUp, Briefcase as ProjectIcon, UserCircle, AlertTriangle, Clock, XCircle, CheckCircle2, UploadCloud, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface DashboardProps {
   userProfile: UserProfile;
   onEditProfile: () => void;
-  onApply: (internship: Internship) => void;
+  onApply: (internship: Internship, resumeBase64?: string) => void;
   myApplications: Application[];
+  allInternships: Internship[];
+  initialTab?: 'feed' | 'applications' | 'path' | 'resume';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApply, myApplications }) => {
-  const [activeTab, setActiveTab] = useState<'feed' | 'applications'>('feed');
+const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApply, myApplications, allInternships, initialTab = 'feed' }) => {
+  const [activeTab, setActiveTab] = useState<'feed' | 'applications' | 'path' | 'resume'>('feed');
   const [internships, setInternships] = useState<Internship[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Application Modal State
+  const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
+  const [applicationResume, setApplicationResume] = useState<File | null>(null);
+  const [applicationError, setApplicationError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Career Path State
+  const [targetRole, setTargetRole] = useState('');
+  const [targetCompany, setTargetCompany] = useState('');
+  const [roadmap, setRoadmap] = useState<LearningRoadmap | null>(null);
+  const [generatingRoadmap, setGeneratingRoadmap] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string | null>('analysis');
 
   // Filter States
   const [searchRole, setSearchRole] = useState('');
@@ -25,35 +40,72 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
   const [filterLocation, setFilterLocation] = useState('All');
   const [minStipend, setMinStipend] = useState(0);
 
-  const firstName = userProfile.name.split(' ')[0];
-  const initials = userProfile.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  const firstName = userProfile.name ? userProfile.name.split(' ')[0] : 'Student';
+  const initials = userProfile.name 
+    ? userProfile.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+    : 'ST';
 
+  // Set initial tab if provided
+  useEffect(() => {
+    if (initialTab) {
+        setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  // Whenever userProfile or allInternships changes, re-run matching
   useEffect(() => {
     const fetchMatches = async () => {
       setLoading(true);
       try {
-        const matches = await matchInternships(userProfile, MOCK_INTERNSHIPS);
+        const matches = await matchInternships(userProfile, allInternships);
         setInternships(matches);
       } catch (e) {
         console.error("Match error", e);
-        setInternships(MOCK_INTERNSHIPS); // Fallback
+        setInternships(allInternships); // Fallback
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMatches();
-  }, [userProfile]);
+    if (allInternships.length > 0) {
+        fetchMatches();
+    } else {
+        setLoading(false);
+    }
+  }, [userProfile, allInternships]);
+
+  const handleGenerateRoadmap = async () => {
+      if (!targetRole || !targetCompany) return;
+      setGeneratingRoadmap(true);
+      setRoadmap(null);
+      try {
+          const result = await generateCareerPath(userProfile, targetRole, targetCompany);
+          setRoadmap(result);
+          setExpandedSection('analysis'); // Auto open first section
+      } catch (e) {
+          console.error("Roadmap error", e);
+      } finally {
+          setGeneratingRoadmap(false);
+      }
+  };
+
+  const toggleSection = (section: string) => {
+    if (expandedSection === section) {
+        setExpandedSection(null);
+    } else {
+        setExpandedSection(section);
+    }
+  };
 
   // Mock confidence data based on detected skills
-  const skillData = userProfile.skills.map(skill => ({
+  const skillData = (userProfile.skills || []).map(skill => ({
     name: skill,
     value: 70 + Math.random() * 25 // Simulate confidence score
   })).slice(0, 6);
 
   // Filter Logic
   const filteredInternships = useMemo(() => {
-    return internships.filter(internship => {
+    return (internships || []).filter(internship => {
         // Role Search
         const matchesRole = internship.title.toLowerCase().includes(searchRole.toLowerCase()) || 
                             internship.company.toLowerCase().includes(searchRole.toLowerCase());
@@ -72,6 +124,75 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
     });
   }, [internships, searchRole, filterType, filterLocation, minStipend]);
 
+  const getStatusStyle = (status: string) => {
+      switch (status) {
+          case 'Accepted':
+              return 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-100 dark:border-green-500/20';
+          case 'Shortlisted':
+              return 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20';
+          case 'Rejected':
+              return 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-100 dark:border-red-500/20';
+          case 'Pending':
+          default:
+              return 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-500/20';
+      }
+  };
+
+  const getStatusIcon = (status: string) => {
+      switch (status) {
+          case 'Accepted': return <CheckCircle2 className="w-4 h-4 mr-1.5" />;
+          case 'Shortlisted': return <Sparkles className="w-4 h-4 mr-1.5" />;
+          case 'Rejected': return <XCircle className="w-4 h-4 mr-1.5" />;
+          case 'Pending': 
+          default: return <Clock className="w-4 h-4 mr-1.5" />;
+      }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          if (file.type !== 'application/pdf') {
+              setApplicationError('Please upload a PDF file.');
+              return;
+          }
+          if (file.size > 5 * 1024 * 1024) {
+              setApplicationError('File size exceeds 5MB.');
+              return;
+          }
+          setApplicationResume(file);
+          setApplicationError(null);
+      }
+  };
+
+  const submitApplication = async () => {
+      if (!selectedInternship) return;
+      
+      let base64String: string | undefined = undefined;
+
+      if (applicationResume) {
+          const reader = new FileReader();
+          reader.readAsDataURL(applicationResume);
+          reader.onload = () => {
+              base64String = (reader.result as string).split(',')[1];
+              onApply(selectedInternship, base64String);
+              resetModal();
+          };
+          reader.onerror = () => {
+              setApplicationError("Failed to read file.");
+          };
+      } else {
+          // Allow applying without a new resume (optional, can be enforced)
+          onApply(selectedInternship);
+          resetModal();
+      }
+  };
+
+  const resetModal = () => {
+      setSelectedInternship(null);
+      setApplicationResume(null);
+      setApplicationError(null);
+  };
+
   return (
     <div className="min-h-screen pt-20 pb-10 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#050511] font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -89,16 +210,40 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2 p-1 bg-white dark:bg-[#101025] rounded-xl border border-slate-200 dark:border-white/10 w-fit animate-slide-up">
+        <div className="flex flex-wrap gap-2 p-1 bg-white dark:bg-[#101025] rounded-xl border border-slate-200 dark:border-white/10 w-fit animate-slide-up">
             <button 
                 onClick={() => setActiveTab('feed')}
-                className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
                     activeTab === 'feed' 
                     ? 'btn-bubble bubble-primary shadow-lg' 
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
             >
-                Job Feed
+                <Search className="w-4 h-4" />
+                Recruiter Matching
+            </button>
+             <button 
+                onClick={() => setActiveTab('resume')}
+                className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    activeTab === 'resume' 
+                    ? 'btn-bubble bubble-primary shadow-lg' 
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+            >
+                <FileText className="w-4 h-4" />
+                Resume Builder
+            </button>
+            <button 
+                onClick={() => setActiveTab('path')}
+                className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    activeTab === 'path' 
+                    ? 'btn-bubble bubble-secondary shadow-lg' 
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+            >
+                <Target className="w-4 h-4" />
+                Career Pathing
+                <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-md font-extrabold uppercase ml-1">New</span>
             </button>
             <button 
                 onClick={() => setActiveTab('applications')}
@@ -108,16 +253,24 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
             >
-                My Applications
-                {myApplications.length > 0 && (
+                <Briefcase className="w-4 h-4" />
+                Applications
+                {myApplications && myApplications.length > 0 && (
                     <span className="bg-white text-indigo-600 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">{myApplications.length}</span>
                 )}
             </button>
         </div>
 
-        {activeTab === 'feed' ? (
+        {/* Content based on Tab */}
+
+        {activeTab === 'resume' && (
+             <div className="animate-slide-up">
+                 <ResumeBuilder userProfile={userProfile} />
+             </div>
+        )}
+
+        {activeTab === 'feed' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Left Column: Stats & Profile */}
           <div className="space-y-8 animate-slide-up" style={{animationDelay: '0.1s'}}>
             {/* Profile Card */}
@@ -153,14 +306,14 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                         <TrendingUp className="w-4 h-4 mr-2 text-green-500" />
                         Top Skill
                     </div>
-                    <span className="font-semibold text-slate-900 dark:text-white">{userProfile.skills[0] || "N/A"}</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{(userProfile.skills && userProfile.skills[0]) || "N/A"}</span>
                   </div>
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-slate-100 dark:border-white/5">
                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Skills Detected</h4>
                    <div className="flex flex-wrap gap-2">
-                      {userProfile.skills.slice(0, 8).map((skill, idx) => (
+                      {(userProfile.skills || []).slice(0, 8).map((skill, idx) => (
                         <span key={idx} className="px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 text-xs rounded-full font-medium border border-slate-200 dark:border-white/10">
                           {skill}
                         </span>
@@ -170,37 +323,11 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
               </div>
             </div>
 
-            {/* Skill Gap Analysis */}
-             <div className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-white/5">
-                <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center">
-                   Your Skill Gaps
-                   <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-[10px] uppercase font-bold rounded-full border border-red-200 dark:border-red-500/20">Important</span>
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Gemini suggests learning these to increase your match score:</p>
-                <ul className="space-y-3">
-                  {userProfile.missingSkills && userProfile.missingSkills.length > 0 ? userProfile.missingSkills.map((skill, idx) => (
-                    <li key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/30 transition-colors group">
-                      <span className="font-medium text-slate-700 dark:text-slate-300 text-sm">{skill}</span>
-                      <a 
-                        href={`https://www.google.com/search?q=learn+${skill}`} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"
-                      >
-                        Learn <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
-                      </a>
-                    </li>
-                  )) : (
-                     <li className="text-sm text-slate-400 italic">No major gaps detected! Great job.</li>
-                  )}
-                </ul>
-             </div>
-             
-             {/* Chart */}
+            {/* Chart */}
              <div className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-white/5">
                 <h3 className="font-bold text-slate-900 dark:text-white mb-4">Skill Confidence</h3>
                 <div className="h-64 w-full" style={{ minHeight: '250px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <BarChart data={skillData}>
                       <XAxis dataKey="name" hide />
                       <YAxis hide domain={[0, 100]} />
@@ -227,9 +354,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
 
           {/* Center/Right Column: Internship Feed */}
           <div className="lg:col-span-2 space-y-6 animate-slide-up" style={{animationDelay: '0.2s'}}>
-            
-            {/* Filter Bar */}
-            <div className="bg-white dark:bg-[#101025] p-4 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm sticky top-20 z-10">
+             <div className="bg-white dark:bg-[#101025] p-4 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm sticky top-20 z-10">
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -303,7 +428,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                         <InternshipCard 
                           key={internship.id} 
                           internship={internship} 
-                          onApply={onApply}
+                          onApply={(job) => setSelectedInternship(job)}
                           hasApplied={myApplications.some(app => app.jobId === internship.id)}
                         />
                     ))
@@ -331,10 +456,278 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
             )}
           </div>
         </div>
-        ) : (
-            /* --- APPLICATIONS TAB --- */
+        )}
+        
+        {/* ... (Rest of component for path and applications remains the same) ... */}
+        {activeTab === 'path' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up">
+                {/* Input Section */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-white/5">
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                                <Target className="w-6 h-6 text-purple-500" />
+                                Target Lock
+                            </h2>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">
+                                Tell us where you want to go. Gemini will analyze the gap between your current skills and their requirements.
+                            </p>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Target Job Role</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="e.g. SDE-1, Data Scientist" 
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-slate-900 dark:text-white transition-all"
+                                    value={targetRole}
+                                    onChange={(e) => setTargetRole(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Target Company</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="e.g. Microsoft, Google, Swiggy" 
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-slate-900 dark:text-white transition-all"
+                                    value={targetCompany}
+                                    onChange={(e) => setTargetCompany(e.target.value)}
+                                />
+                            </div>
+                            <button 
+                                onClick={handleGenerateRoadmap}
+                                disabled={generatingRoadmap || !targetRole || !targetCompany}
+                                className="w-full py-3.5 btn-bubble bubble-secondary text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {generatingRoadmap ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Analyzing Gap...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-5 h-5" />
+                                        Generate Roadmap
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Readiness Score (Only show if roadmap exists) */}
+                    {roadmap && (
+                        <div className="bg-white dark:bg-[#101025] p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-white/5 text-center relative overflow-hidden">
+                             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-purple-500/10 to-indigo-500/10 z-0"></div>
+                             <div className="relative z-10">
+                                 <h3 className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">Recruiter Readiness Score</h3>
+                                 <div className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-indigo-600 dark:from-purple-400 dark:to-indigo-400">
+                                     {roadmap.readinessScore}%
+                                 </div>
+                                 <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm font-medium">
+                                     {roadmap.readinessScore > 75 ? "You're almost there! Just a few tweaks." : "Some serious upskilling needed, but totally doable."}
+                                 </p>
+                                 <div className="mt-6 p-4 bg-white/50 dark:bg-black/20 rounded-xl border border-purple-100 dark:border-white/10 text-left">
+                                     <h4 className="font-bold text-sm text-purple-700 dark:text-purple-300 mb-2 flex items-center">
+                                         <ArrowRight className="w-4 h-4 mr-2" />
+                                         Next Immediate Step
+                                     </h4>
+                                     <p className="text-sm text-slate-700 dark:text-slate-300 leading-snug">{roadmap.nextImmediateStep}</p>
+                                 </div>
+                             </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Results Section - ACCORDION PALETTE */}
+                <div className="lg:col-span-2 space-y-4">
+                    {!roadmap && !generatingRoadmap && (
+                        <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5 border-dashed min-h-[400px]">
+                            <div className="w-24 h-24 bg-purple-50 dark:bg-purple-900/10 rounded-full flex items-center justify-center mb-6 animate-pulse-slow">
+                                <Target className="w-10 h-10 text-purple-300" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Ready to chart your course?</h3>
+                            <p className="text-slate-500 dark:text-slate-400 max-w-md">
+                                Enter a target role and company on the left to get a personalized skill gap analysis and monthly learning plan.
+                            </p>
+                        </div>
+                    )}
+
+                    {generatingRoadmap && (
+                         <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5 min-h-[400px]">
+                            <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-6" />
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Analyzing Company Standards...</h3>
+                            <p className="text-slate-500 dark:text-slate-400">Checking {targetCompany} requirements against your profile.</p>
+                        </div>
+                    )}
+
+                    {roadmap && (
+                        <>
+                            {/* Section 1: Analysis (Strong Points & Gaps) */}
+                            <div className="bg-[#0f172a] dark:bg-[#101025] rounded-[1.5rem] border border-slate-200 dark:border-white/10 overflow-hidden transition-all duration-300">
+                                <button 
+                                    onClick={() => toggleSection('analysis')}
+                                    className="w-full flex items-center justify-between p-6 bg-[#0f172a] hover:bg-[#1e293b] dark:bg-[#101025] dark:hover:bg-white/5 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <BarChart2 className="w-6 h-6 text-emerald-400" />
+                                        <span className="text-lg font-bold text-white">Analysis Breakdown</span>
+                                    </div>
+                                    {expandedSection === 'analysis' ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
+                                </button>
+                                
+                                {expandedSection === 'analysis' && (
+                                    <div className="p-6 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in bg-[#0f172a] dark:bg-[#101025]">
+                                        <div>
+                                            <h4 className="text-emerald-400 font-bold mb-4 flex items-center">
+                                                <CheckSquare className="w-4 h-4 mr-2" />
+                                                Your Strong Points
+                                            </h4>
+                                            <div className="space-y-3">
+                                                {(roadmap.strongSkills || []).map((item, i) => (
+                                                    <div key={i} className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 shadow-sm hover:shadow-md transition-all">
+                                                        <div className="font-bold text-emerald-300 text-sm mb-1">{item.skill}</div>
+                                                        <div className="text-emerald-400/60 text-xs leading-relaxed">{item.reason}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-rose-400 font-bold mb-4 flex items-center">
+                                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                                Critical Gaps
+                                            </h4>
+                                            <div className="space-y-3">
+                                                {/* Combine toImprove and toLearn for critical gaps list */}
+                                                {[...(roadmap.skillsToImprove || []), ...(roadmap.skillsToLearn || [])].slice(0, 4).map((item, i) => (
+                                                    <div key={i} className="p-3 bg-rose-500/10 rounded-xl border border-rose-500/20 shadow-sm hover:shadow-md transition-all">
+                                                        <div className="font-bold text-rose-300 text-sm mb-1">{item.skill}</div>
+                                                        <div className="text-rose-400/60 text-xs leading-relaxed">{item.reason}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Section 2: Roadmap */}
+                            <div className="bg-[#0f172a] dark:bg-[#101025] rounded-[1.5rem] border border-slate-200 dark:border-white/10 overflow-hidden transition-all duration-300">
+                                <button 
+                                    onClick={() => toggleSection('roadmap')}
+                                    className="w-full flex items-center justify-between p-6 bg-[#0f172a] hover:bg-[#1e293b] dark:bg-[#101025] dark:hover:bg-white/5 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Calendar className="w-6 h-6 text-blue-400" />
+                                        <span className="text-lg font-bold text-white">Your Personalized Roadmap</span>
+                                    </div>
+                                    {expandedSection === 'roadmap' ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
+                                </button>
+                                
+                                {expandedSection === 'roadmap' && (
+                                    <div className="p-8 border-t border-white/10 bg-[#0f172a] dark:bg-[#101025] animate-fade-in">
+                                         <div className="relative border-l-2 border-slate-700 ml-4 space-y-12">
+                                            {(roadmap.roadmap || []).map((phase, i) => (
+                                                <div key={i} className="relative pl-8">
+                                                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-[#0f172a]"></div>
+                                                    <h4 className="text-lg font-bold text-white mb-2">{phase.month}</h4>
+                                                    
+                                                    <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5 space-y-4">
+                                                        <div>
+                                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Focus Skills</div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {(phase.skills || []).map(s => (
+                                                                    <span key={s} className="px-3 py-1 bg-white/10 rounded-lg text-sm font-medium text-slate-300 shadow-sm">{s}</span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Tools</div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {(phase.tools || []).map(t => (
+                                                                    <span key={t} className="px-3 py-1 bg-white/10 rounded-lg text-sm font-medium text-slate-300 border border-white/5">{t}</span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div className="pt-2 border-t border-white/5">
+                                                             <div className="text-xs font-bold text-blue-400 uppercase tracking-wide mb-1">Mission</div>
+                                                             <p className="text-sm text-slate-300">{phase.task}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Section 3: Project */}
+                            <div className="bg-[#4c1d95] rounded-[1.5rem] border border-white/10 overflow-hidden transition-all duration-300">
+                                <button 
+                                    onClick={() => toggleSection('project')}
+                                    className="w-full flex items-center justify-between p-6 bg-gradient-to-r from-[#4c1d95] to-[#5b21b6] hover:brightness-110 transition-all"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <ProjectIcon className="w-6 h-6 text-white" />
+                                        <span className="text-lg font-bold text-white">Project for Portfolio</span>
+                                    </div>
+                                    {expandedSection === 'project' ? <ChevronUp className="text-white/70" /> : <ChevronDown className="text-white/70" />}
+                                </button>
+                                
+                                {expandedSection === 'project' && (
+                                    <div className="p-6 border-t border-white/10 bg-[#4c1d95] animate-fade-in text-white relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                                        <div className="grid gap-4 relative z-10">
+                                            {(roadmap.recommendedProjects || []).map((project, i) => (
+                                                <div key={i} className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10">
+                                                    <h4 className="font-bold text-lg mb-2">{project.name}</h4>
+                                                    <p className="text-indigo-100 text-sm mb-4 opacity-90 leading-relaxed">{project.reason}</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(project.skillsCovered || []).map(s => (
+                                                            <span key={s} className="px-2 py-1 bg-black/20 rounded-md text-xs font-medium">{s}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Section 4: Resume */}
+                            <div className="bg-[#0f172a] dark:bg-[#101025] rounded-[1.5rem] border border-slate-200 dark:border-white/10 overflow-hidden transition-all duration-300">
+                                <button 
+                                    onClick={() => toggleSection('resume')}
+                                    className="w-full flex items-center justify-between p-6 bg-[#0f172a] hover:bg-[#1e293b] dark:bg-[#101025] dark:hover:bg-white/5 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <UserCircle className="w-6 h-6 text-indigo-400" />
+                                        <span className="text-lg font-bold text-white">Resume Quick Wins</span>
+                                    </div>
+                                    {expandedSection === 'resume' ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
+                                </button>
+                                
+                                {expandedSection === 'resume' && (
+                                    <div className="p-6 border-t border-white/10 bg-[#0f172a] dark:bg-[#101025] animate-fade-in">
+                                        <ul className="space-y-4">
+                                            {(roadmap.profileSuggestions || []).map((s, i) => (
+                                                <li key={i} className="flex items-start gap-4 text-sm text-slate-300">
+                                                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs flex-shrink-0 mt-0.5">{i+1}</div>
+                                                    <span className="leading-relaxed">{s}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        )}
+
+        {activeTab === 'applications' && (
             <div className="animate-slide-up">
-                {myApplications.length === 0 ? (
+                {(!myApplications || myApplications.length === 0) ? (
                      <div className="text-center py-24 bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5">
                         <div className="w-20 h-20 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Briefcase className="w-10 h-10 text-slate-400" />
@@ -349,40 +742,128 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                         </button>
                     </div>
                 ) : (
-                    <div className="grid gap-6">
-                        {myApplications.map((app) => (
-                            <div key={app.id} className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 font-bold text-xl border border-slate-200 dark:border-white/10">
-                                        {app.companyName.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{app.jobTitle}</h3>
-                                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                                            <Building2 className="w-4 h-4" />
-                                            {app.companyName}
-                                            <span className="mx-1">•</span>
-                                            <span>Applied {app.appliedDate}</span>
+                    <>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                            <div className="p-4 rounded-2xl bg-white dark:bg-[#101025] border border-slate-200 dark:border-white/5 shadow-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total</p>
+                                <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{myApplications.length}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white dark:bg-[#101025] border border-slate-200 dark:border-white/5 shadow-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Reviewing</p>
+                                <p className="text-2xl font-extrabold text-amber-500">{myApplications.filter(a => a.status === 'Pending').length}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white dark:bg-[#101025] border border-slate-200 dark:border-white/5 shadow-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Shortlisted</p>
+                                <p className="text-2xl font-extrabold text-blue-500">{myApplications.filter(a => a.status === 'Shortlisted').length}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white dark:bg-[#101025] border border-slate-200 dark:border-white/5 shadow-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Accepted</p>
+                                <p className="text-2xl font-extrabold text-green-500">{myApplications.filter(a => a.status === 'Accepted').length}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-6">
+                            {myApplications.map((app) => (
+                                <div key={app.id} className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 font-bold text-xl border border-slate-200 dark:border-white/10">
+                                            {app.companyName.substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{app.jobTitle}</h3>
+                                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                                                <Building2 className="w-4 h-4" />
+                                                {app.companyName}
+                                                <span className="mx-1">•</span>
+                                                <span>Applied {app.appliedDate}</span>
+                                            </div>
                                         </div>
                                     </div>
+                                    <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                                        <div className={`px-4 py-1.5 rounded-full text-sm font-bold border flex items-center ${getStatusStyle(app.status)}`}>
+                                            {getStatusIcon(app.status)}
+                                            {app.status}
+                                        </div>
+                                        <div className="text-xs text-slate-400">Match Score: {app.matchScore}%</div>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                                     <div className={`px-4 py-1.5 rounded-full text-sm font-bold border ${
-                                         app.status === 'Pending' ? 'bg-yellow-50 dark:bg-yellow-900/10 text-yellow-600 dark:text-yellow-400 border-yellow-100 dark:border-yellow-900/30' : 
-                                         app.status === 'Accepted' ? 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/30' :
-                                         'bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/10'
-                                     }`}>
-                                         {app.status}
-                                     </div>
-                                     <div className="text-xs text-slate-400">Match Score: {app.matchScore}%</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
         )}
       </div>
+
+      {/* Apply Modal */}
+      {selectedInternship && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-slide-up border border-slate-200 dark:border-slate-800">
+             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                 <div>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">Apply to {selectedInternship.company}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{selectedInternship.title}</p>
+                 </div>
+                 <button onClick={resetModal} className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                     <X className="w-5 h-5" />
+                 </button>
+             </div>
+             <div className="p-6 space-y-6">
+                 <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Resume</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Please upload your specific resume for this role (PDF only, max 5MB).</p>
+                    
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                            applicationResume 
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
+                            : 'border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                        <input 
+                            type="file" 
+                            ref={fileInputRef}
+                            className="hidden" 
+                            accept="application/pdf"
+                            onChange={handleFileChange}
+                        />
+                        {applicationResume ? (
+                            <div className="flex flex-col items-center">
+                                <CheckCircle2 className="w-8 h-8 text-green-500 mb-2" />
+                                <span className="text-sm font-bold text-green-700 dark:text-green-400 truncate max-w-full px-2">{applicationResume.name}</span>
+                                <span className="text-xs text-green-600 dark:text-green-500 mt-1">Ready to submit</span>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center">
+                                <UploadCloud className="w-8 h-8 text-slate-400 mb-2" />
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Click to upload PDF</span>
+                            </div>
+                        )}
+                    </div>
+                    {applicationError && (
+                        <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            {applicationError}
+                        </p>
+                    )}
+                 </div>
+
+                 <div className="flex gap-3">
+                     <button onClick={resetModal} className="flex-1 py-3 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                         Cancel
+                     </button>
+                     <button 
+                        onClick={submitApplication}
+                        className="flex-1 py-3 btn-bubble bubble-primary text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                     >
+                         Submit Application
+                     </button>
+                 </div>
+             </div>
+          </div>
+        </div>
+      )}
       
       {/* Sticky Chat Widget */}
       <ChatWidget userProfile={userProfile} />

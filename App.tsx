@@ -6,17 +6,19 @@ import Dashboard from './components/Dashboard';
 import RecruiterDashboard from './components/RecruiterDashboard';
 import StudentOnboarding from './components/StudentOnboarding';
 import { ViewState, UserProfile, Application, Internship } from './types';
+import { MOCK_INTERNSHIPS } from './constants';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loginRole, setLoginRole] = useState<'student' | 'recruiter'>('student');
   const [applications, setApplications] = useState<Application[]>([]);
+  const [internships, setInternships] = useState<Internship[]>([]);
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<'feed' | 'applications' | 'path' | 'resume'>('feed');
   
   // Theme State
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
 
-  // Apply theme class to HTML element
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -25,7 +27,23 @@ const App: React.FC = () => {
     }
   }, [darkMode]);
 
-  // Check for active session and load applications on mount
+  // Load Internships
+  useEffect(() => {
+    const storedInternships = localStorage.getItem('skillbridge_internships');
+    if (storedInternships) {
+        try {
+            const parsed = JSON.parse(storedInternships);
+            setInternships(parsed.length > 0 ? parsed : MOCK_INTERNSHIPS);
+        } catch (e) {
+            setInternships(MOCK_INTERNSHIPS);
+        }
+    } else {
+        setInternships(MOCK_INTERNSHIPS);
+        localStorage.setItem('skillbridge_internships', JSON.stringify(MOCK_INTERNSHIPS));
+    }
+  }, []);
+
+  // Check for active session
   useEffect(() => {
     const storedUser = localStorage.getItem('skillbridge_current_user');
     if (storedUser) {
@@ -33,7 +51,6 @@ const App: React.FC = () => {
             const profile = JSON.parse(storedUser);
             setUserProfile(profile);
             
-            // Restore view based on profile status
             if (profile.role === 'recruiter') {
                 setCurrentView('recruiter-dashboard');
             } else if (!profile.name || profile.name.trim() === '') {
@@ -51,9 +68,10 @@ const App: React.FC = () => {
     const storedApps = localStorage.getItem('skillbridge_applications');
     if (storedApps) {
         try {
-            setApplications(JSON.parse(storedApps));
+            setApplications(JSON.parse(storedApps) || []);
         } catch (e) {
             console.error("Failed to load applications", e);
+            setApplications([]);
         }
     }
   }, []);
@@ -62,11 +80,8 @@ const App: React.FC = () => {
 
   const handleLogin = (profile: UserProfile) => {
     setUserProfile(profile);
-    
-    // Save active session
     localStorage.setItem('skillbridge_current_user', JSON.stringify(profile));
     
-    // If it's a student with a name (completed profile), ensure it's saved in our "DB"
     if (profile.role === 'student' && profile.name) {
         localStorage.setItem('skillbridge_saved_profile', JSON.stringify(profile));
     }
@@ -74,7 +89,6 @@ const App: React.FC = () => {
     if (profile.role === 'recruiter') {
         setCurrentView('recruiter-dashboard');
     } else {
-        // Check if student profile is incomplete
         if (!profile.name || profile.name.trim() === '') {
             setCurrentView('student-onboarding');
         } else {
@@ -85,11 +99,8 @@ const App: React.FC = () => {
 
   const handleOnboardingComplete = (updatedProfile: UserProfile) => {
       setUserProfile(updatedProfile);
-      
-      // Save to Session and "DB"
       localStorage.setItem('skillbridge_current_user', JSON.stringify(updatedProfile));
       localStorage.setItem('skillbridge_saved_profile', JSON.stringify(updatedProfile));
-      
       setCurrentView('student-dashboard');
   };
 
@@ -97,6 +108,7 @@ const App: React.FC = () => {
       setUserProfile(null);
       localStorage.removeItem('skillbridge_current_user');
       setCurrentView('landing');
+      setDashboardInitialTab('feed'); // Reset tab on logout
   };
 
   const handleResumeAnalyzed = (profile: UserProfile) => {
@@ -111,8 +123,7 @@ const App: React.FC = () => {
       setCurrentView('login');
   };
 
-  // --- APPLICATION LOGIC ---
-  const handleApplyForInternship = (internship: Internship) => {
+  const handleApplyForInternship = (internship: Internship, resumeBase64?: string) => {
       if (!userProfile || userProfile.role !== 'student') return;
 
       const newApplication: Application = {
@@ -125,7 +136,9 @@ const App: React.FC = () => {
           companyName: internship.company,
           status: 'Pending',
           appliedDate: new Date().toISOString().split('T')[0],
-          matchScore: internship.matchScore || 75 // Use calculated score or default
+          matchScore: internship.matchScore || 75,
+          resumeBase64: resumeBase64,
+          resumeMimeType: resumeBase64 ? 'application/pdf' : undefined
       };
 
       const updatedApps = [...applications, newApplication];
@@ -133,8 +146,33 @@ const App: React.FC = () => {
       localStorage.setItem('skillbridge_applications', JSON.stringify(updatedApps));
   };
 
+  const handleUpdateInternships = (newInternships: Internship[]) => {
+      setInternships(newInternships);
+      localStorage.setItem('skillbridge_internships', JSON.stringify(newInternships));
+  };
+
+  // Recruiter actions
+  const handleUpdateApplications = (updatedApps: Application[]) => {
+      setApplications(updatedApps);
+      localStorage.setItem('skillbridge_applications', JSON.stringify(updatedApps));
+  };
+
+  const handleBuildResume = () => {
+      setDashboardInitialTab('resume');
+      if (userProfile && userProfile.role === 'student') {
+          setCurrentView('student-dashboard');
+      } else {
+          // If not logged in, prompt login. Once logged in, session restore or handleLogin logic 
+          // doesn't inherently know about this intent, but for simplicity:
+          // In a real app we'd pass a "redirect" param. Here we just set state so if they do login, 
+          // or if they are already logged in, it opens correctly.
+          // If they aren't logged in, let's send them to login.
+          navigateToLogin('student');
+      }
+  };
+
   return (
-    <div className={`min-h-screen font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 transition-colors duration-300 ${darkMode ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`min-h-screen font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300 ${darkMode ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
       <Navbar 
         currentView={currentView} 
         onNavigate={(view) => {
@@ -156,6 +194,7 @@ const App: React.FC = () => {
             onLoginRecruiter={() => navigateToLogin('recruiter')}
             onResumeAnalyzed={handleResumeAnalyzed}
             onGoToDashboard={() => setCurrentView(userProfile?.role === 'recruiter' ? 'recruiter-dashboard' : 'student-dashboard')}
+            onBuildResume={handleBuildResume}
           />
         )}
 
@@ -180,18 +219,27 @@ const App: React.FC = () => {
             onEditProfile={() => setCurrentView('student-onboarding')}
             onApply={handleApplyForInternship}
             myApplications={applications.filter(app => app.studentId === userProfile.email)}
+            allInternships={internships}
+            initialTab={dashboardInitialTab}
           />
         )}
 
         {currentView === 'recruiter-dashboard' && userProfile && (
-            <RecruiterDashboard userProfile={userProfile} onLogout={handleLogout} />
+            <RecruiterDashboard 
+                userProfile={userProfile} 
+                onLogout={handleLogout} 
+                allInternships={internships}
+                onUpdateInternships={handleUpdateInternships}
+                applications={applications}
+                onUpdateApplications={handleUpdateApplications}
+            />
         )}
       </main>
 
-      {currentView !== 'login' && currentView !== 'student-onboarding' && (
+      {currentView !== 'login' && currentView !== 'student-onboarding' && currentView !== 'landing' && (
           <footer className="bg-white dark:bg-[#050511] border-t border-slate-200 dark:border-white/5 py-10 mt-auto transition-colors duration-300">
              <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500 dark:text-slate-400">
-                <p>&copy; 2024 SkillBridge AI. Built for Hyderabad.</p>
+                <p>&copy; 2024 AstraX.ai. Built for Hyderabad.</p>
                 <div className="flex gap-4 mt-4 md:mt-0">
                     <a href="#" className="hover:text-slate-900 dark:hover:text-white">Privacy</a>
                     <a href="#" className="hover:text-slate-900 dark:hover:text-white">Terms</a>
