@@ -8,7 +8,7 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
-const MODEL_NAME = 'gemini-1.5-flash'; // Standard model
+const MODEL_NAME = 'gemini-2.0-flash'; // Available model
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
