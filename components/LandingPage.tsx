@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile } from '../types';
 import ResumeUpload from './ResumeUpload';
-import { FileText, LayoutDashboard, Sparkles, Briefcase, TrendingUp, CheckCircle, CheckCircle2, Target, ArrowRight, UploadCloud, X, ExternalLink, Code2, Brain, Zap, BarChart3, ChevronDown } from 'lucide-react';
+import { FileText, LayoutDashboard, Sparkles, Briefcase, TrendingUp, CheckCircle, CheckCircle2, Target, ArrowRight, UploadCloud, X, ExternalLink, Code2, Brain, Zap, BarChart3, ChevronDown, Lock } from 'lucide-react';
 
 interface LandingPageProps {
     isLoggedIn: boolean;

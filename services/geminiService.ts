@@ -1,7 +1,8 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
-// Standard worker setup for client-side PDF parsing
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+// Remove top-level worker assignment to prevent startup crashes
+// Worker will be initialized lazily inside extractTextFromPdf
 
 import { Internship, UserProfile, LearningRoadmap, ResumeData } from "../types";
 
@@ -10,6 +11,11 @@ const API_URL = 'https://text.pollinations.ai/';
 
 // --- Helper: Extract Text from PDF Base64 ---
 const extractTextFromPdf = async (base64Data: string): Promise<string> => {
+    // Lazy Initialize Worker (prevents "Illegal constructor" crashes on app load)
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    }
+
     try {
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
