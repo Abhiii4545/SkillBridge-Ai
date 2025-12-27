@@ -103,13 +103,28 @@ const App: React.FC = () => {
             const unsubscribe = onAuthStateChanged(auth, async (user) => {
                 if (user && user.email) {
                     console.log("Restoring session for:", user.email);
-                    // Fetch extended profile from Firestore
                     try {
-                        const profile = await getUserProfile(user.email);
-                        if (profile) {
-                            setUserProfile(profile);
+                        let profile = await getUserProfile(user.email);
+
+                        if (!profile) {
+                            console.log("No profile found in Firestore, creating new default profile.");
+                            profile = {
+                                name: user.displayName || 'User',
+                                email: user.email,
+                                role: 'student', // Default role
+                                skills: [],
+                                experienceLevel: 'Student',
+                                summary: '',
+                                missingSkills: []
+                            };
+                            await saveUserProfile(user.email, profile);
                         }
-                    } catch (e) { console.error("Profile restore error", e); }
+
+                        setUserProfile(profile);
+                    } catch (e) {
+                        console.error("Profile restore error", e);
+                        setUserProfile(null);
+                    }
                 } else {
                     setUserProfile(null);
                 }

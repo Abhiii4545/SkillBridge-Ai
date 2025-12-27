@@ -1,12 +1,14 @@
-
 import * as pdfjsLib from 'pdfjs-dist';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Remove top-level worker assignment to prevent startup crashes
 // Worker will be initialized lazily inside extractTextFromPdf
 
 import { Internship, UserProfile, LearningRoadmap, ResumeData } from "../types";
 
-// Pollinations.ai: Free, No Key, No Login
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "YOUR_API_KEY");
+
 const API_URL = 'https://text.pollinations.ai/';
 
 // --- Helper: Extract Text from PDF Base64 ---
@@ -44,10 +46,18 @@ const extractTextFromPdf = async (base64Data: string): Promise<string> => {
 };
 
 const callAI = async (systemPrompt: string, userPrompt: string, retries = 3): Promise<string> => {
-    let attempt = 0;
-    while (attempt < retries) {
+    try {
+        // Use Gemini Flash for speed and intelligence
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent([systemPrompt, userPrompt]);
+        const response = await result.response;
+        return response.text();
+    } catch (err) {
+        console.error("Gemini API Error:", err);
+        // Fallback to Pollinations if Gemini fails (e.g. key missing)
         try {
-            const response = await fetch(API_URL, {
+            console.log("Falling back to Pollinations.ai...");
+            const response = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -55,22 +65,17 @@ const callAI = async (systemPrompt: string, userPrompt: string, retries = 3): Pr
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
                     ],
-                    model: 'openai', // Pollinations mapping
-                    jsonMode: true // Hint for JSON
+                    model: 'openai',
+                    jsonMode: true
                 })
             });
-
-            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            if (!response.ok) throw new Error("Pollinations Error");
             return await response.text();
-
-        } catch (err) {
-            console.error(`AI API Error (Attempt ${attempt + 1}):`, err);
-            attempt++;
-            if (attempt >= retries) throw err;
-            await new Promise(r => setTimeout(r, 1000));
+        } catch (fallbackErr) {
+            console.error("All AI services failed", fallbackErr);
+            throw new Error("AI Service unavailable.");
         }
     }
-    throw new Error("AI Service failed to respond.");
 };
 
 // --- Exported Functions ---
