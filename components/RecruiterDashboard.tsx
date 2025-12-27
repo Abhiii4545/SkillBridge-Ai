@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, Internship, Application } from '../types';
+import { addInternshipToFirestore, updateApplicationStatusWithNotification } from '../services/firebase';
 import { Plus, Users, Search, MessageSquare, Briefcase, X, Check, Building2, Globe, Layout, LogOut, ArrowRight, Settings, ChevronRight, ChevronDown, Mail, Phone, Calendar, GraduationCap, MapPin, Download, Sparkles, XCircle, CheckCircle2 } from 'lucide-react';
 
 interface RecruiterDashboardProps {
@@ -108,7 +109,7 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
         setShowPostModal(true);
     };
 
-    const handleSaveJob = (e: React.FormEvent) => {
+    const handleSaveJob = async (e: React.FormEvent) => {
         e.preventDefault();
 
         let updatedInternships: Internship[];
@@ -133,10 +134,18 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
                 stipend: jobForm.stipend,
                 description: jobForm.description,
                 company: companyInfo.name,
-                location: 'Hyderabad', // In a real app, this would be editable or derived from profile
-                requiredSkills: [], // Could add skills input later
-                postedDate: new Date().toISOString().split('T')[0]
+                location: 'Hyderabad',
+                requiredSkills: [],
+                postedDate: new Date().toISOString()
             };
+
+            // GLOBAL PERSISTENCE
+            try {
+                await addInternshipToFirestore(newJob);
+            } catch (err) {
+                console.error("Failed to post job to cloud", err);
+            }
+
             updatedInternships = [newJob, ...allInternships];
         }
 
@@ -144,12 +153,21 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
         setShowPostModal(false);
     };
 
+
+
     const handleViewApplicants = (jobId: string, jobTitle: string) => {
         setViewingApplicantsFor(jobTitle);
         setViewingApplicantsJobId(jobId);
     };
 
-    const handleStatusUpdate = (appId: string, newStatus: Application['status']) => {
+    const handleStatusUpdate = async (appId: string, newStatus: Application['status']) => {
+        const app = applications.find(a => a.id === appId);
+        if (app) {
+            try {
+                await updateApplicationStatusWithNotification(appId, newStatus, app.studentEmail, app.jobTitle);
+            } catch (e) { console.error(e) }
+        }
+
         const updatedApplications = applications.map(app =>
             app.id === appId ? { ...app, status: newStatus } : app
         );

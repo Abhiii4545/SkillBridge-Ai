@@ -188,10 +188,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                                             <CheckCircle2 className="w-5 h-5" />
                                             <span className="font-semibold">Welcome back</span>
                                         </div>
-                                        <button onClick={onGoToDashboard} className="btn-bubble bubble-light px-8 py-4 text-lg flex items-center gap-2">
-                                            <LayoutDashboard className="w-5 h-5" />
-                                            Go to Dashboard
-                                        </button>
+                                        <div className="flex flex-wrap justify-center gap-4">
+                                            <button onClick={onGoToDashboard} className="btn-bubble bubble-light px-8 py-4 text-lg flex items-center gap-2">
+                                                <LayoutDashboard className="w-5 h-5" />
+                                                Go to Dashboard
+                                            </button>
+                                            <button onClick={onUploadResume} className="btn-bubble bubble-primary px-8 py-4 text-lg flex items-center gap-2">
+                                                <UploadCloud className="w-5 h-5" />
+                                                Upload Resume
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center space-y-6 animate-fade-in py-8">

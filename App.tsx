@@ -8,7 +8,7 @@ import StudentOnboarding from './components/StudentOnboarding';
 import ResumeUploadPage from './components/ResumeUploadPage';
 import { ViewState, UserProfile, Application, Internship } from './types';
 import { MOCK_INTERNSHIPS } from './constants';
-import { saveUserProfile, getUserProfile } from './services/firebase'; // Persistence
+import { saveUserProfile, getUserProfile, getInternshipsFromFirestore, subscribeToNotifications } from './services/firebase'; // Persistence
 
 const App: React.FC = () => {
     // START STRICT: Default to 'login' instead of 'landing'
@@ -34,6 +34,10 @@ const App: React.FC = () => {
     const [internships, setInternships] = useState<Internship[]>([]);
     const [dashboardInitialTab, setDashboardInitialTab] = useState<'feed' | 'applications' | 'path' | 'resume'>('feed');
 
+    // Notifications State
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
     // Theme State
     const [darkMode, setDarkMode] = useState(true);
 
@@ -45,33 +49,49 @@ const App: React.FC = () => {
         }
     }, [darkMode]);
 
-    // Load Internships
+    // Load Internships (Global Visibility)
     useEffect(() => {
-        const storedInternships = localStorage.getItem('skillbridge_internships');
-        if (storedInternships) {
+        const loadInternships = async () => {
             try {
-                const parsed = JSON.parse(storedInternships);
-                setInternships(parsed.length > 0 ? parsed : MOCK_INTERNSHIPS);
+                // 1. Try fetching from Firestore (Source of Truth)
+                const cloudInternships = await getInternshipsFromFirestore();
+                if (cloudInternships && cloudInternships.length > 0) {
+                    setInternships(cloudInternships);
+                    // Update local cache
+                    localStorage.setItem('skillbridge_internships', JSON.stringify(cloudInternships));
+                } else {
+                    // 2. Fallback to LocalStorage
+                    const storedInternships = localStorage.getItem('skillbridge_internships');
+                    if (storedInternships) {
+                        const parsed = JSON.parse(storedInternships);
+                        setInternships(parsed.length > 0 ? parsed : MOCK_INTERNSHIPS);
+                    } else {
+                        setInternships(MOCK_INTERNSHIPS);
+                    }
+                }
             } catch (e) {
+                console.error("Failed to load internships:", e);
+                // Fallback
                 setInternships(MOCK_INTERNSHIPS);
             }
-        } else {
-            setInternships(MOCK_INTERNSHIPS);
-            localStorage.setItem('skillbridge_internships', JSON.stringify(MOCK_INTERNSHIPS));
-        }
+        };
+        loadInternships();
     }, []);
 
-    // Load Applications (Fix for Persistence)
+    // 5. REAL-TIME APPLICATIONS LISTENER (Student)
     useEffect(() => {
-        const storedApps = localStorage.getItem('skillbridge_applications');
-        if (storedApps) {
-            try {
-                setApplications(JSON.parse(storedApps));
-            } catch (e) {
-                console.error("Failed to parse applications", e);
-            }
+        if (userProfile && userProfile.email && userProfile.role === 'student') {
+            // Import dynamically to avoid circular dependencies if any (though firebase.ts is fine)
+            import('./services/firebase').then(({ subscribeToStudentApplications }) => {
+                const unsubscribe = subscribeToStudentApplications(userProfile.email, (apps) => {
+                    setApplications(apps);
+                    // Update local cache
+                    localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
+                });
+                return () => unsubscribe();
+            });
         }
-    }, []);
+    }, [userProfile]);
 
     // Check for active session
     useEffect(() => {
@@ -88,6 +108,18 @@ const App: React.FC = () => {
             }
         }
     }, []); // Run once on mount
+
+    // 4. REAL-TIME NOTIFICATIONS LISTENER
+    useEffect(() => {
+        if (userProfile && userProfile.email) {
+            // Subscribe to live notifications
+            const unsubscribe = subscribeToNotifications(userProfile.email, (notifs) => {
+                setNotifications(notifs);
+                setUnreadCount(notifs.filter(n => !n.read).length);
+            });
+            return () => unsubscribe();
+        }
+    }, [userProfile]);
 
     const toggleTheme = () => setDarkMode(!darkMode);
 
@@ -213,6 +245,8 @@ const App: React.FC = () => {
                 onLogout={handleLogout}
                 darkMode={darkMode}
                 toggleTheme={toggleTheme}
+                notifications={notifications}
+                unreadCount={unreadCount}
             />
 
             <main>

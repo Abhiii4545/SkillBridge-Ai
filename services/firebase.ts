@@ -12,7 +12,7 @@ const firebaseConfig = {
 
 import { getAuth, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
 
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 const app = (firebaseConfig.apiKey) ? initializeApp(firebaseConfig) : null;
 const auth = app ? getAuth(app) : null;
@@ -24,6 +24,7 @@ if (!app) {
   console.warn("Firebase credentials missing. Running in offline mode.");
 }
 
+// --- Helper Functions for Persistence ---
 // --- Helper Functions for Persistence ---
 export const saveUserProfile = async (email: string, profile: any) => {
   if (!email || !db) return; // Return if no DB
@@ -47,6 +48,124 @@ export const getUserProfile = async (email: string): Promise<any | null> => {
     console.error("Error getting profile:", e);
   }
   return null;
+};
+
+// --- Internship Persistence (Global Visibility) ---
+// --- Internship Persistence (Global Visibility) ---
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot, where, updateDoc, doc, getDoc, setDoc } from "firebase/firestore";
+
+export const addInternshipToFirestore = async (internship: any) => {
+  if (!db) return;
+  try {
+    const docRef = await addDoc(collection(db, "internships"), {
+      ...internship,
+      createdAt: new Date().toISOString()
+    });
+    console.log("Internship published:", docRef.id);
+  } catch (e) {
+    console.error("Error publishing internship:", e);
+    throw e;
+  }
+};
+
+export const getInternshipsFromFirestore = async (): Promise<any[]> => {
+  if (!db) return [];
+  try {
+    const q = query(collection(db, "internships"), orderBy("createdAt", "desc"));
+    const querySnapshot = await getDocs(q);
+    // Return data, using Firestore ID as the 'id'
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (e) {
+    console.error("Error fetching global internships:", e);
+    return [];
+  }
+};
+
+// --- Real-Time Notifications & Applications ---
+
+// 1. Subscribe to Notifications (Live Bell Icon)
+export const subscribeToNotifications = (email: string, callback: (notifs: any[]) => void) => {
+  if (!db || !email) return () => { };
+
+  const q = query(
+    collection(db, "notifications"),
+    where("recipientEmail", "==", email),
+    orderBy("createdAt", "desc")
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(notifs);
+  });
+};
+
+// 2. Send Notification (Recruiter Action -> Student Alert)
+export const sendNotification = async (recipientEmail: string, message: string, type: 'status' | 'view' | 'job') => {
+  if (!db) return;
+  try {
+    await addDoc(collection(db, "notifications"), {
+      recipientEmail,
+      message,
+      type,
+      read: false,
+      createdAt: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("Error sending notification:", e);
+  }
+};
+
+// 3. Mark as Read
+export const markNotificationAsRead = async (id: string) => {
+  if (!db) return;
+  await updateDoc(doc(db, "notifications", id), { read: true });
+};
+
+// 4. Live Applications (Student "My Applications" tab)
+export const subscribeToStudentApplications = (studentEmail: string, callback: (apps: any[]) => void) => {
+  if (!db || !studentEmail) return () => { };
+  // Assuming applications are stored in a root 'applications' collection for now, 
+  // or filtering internships? 
+  // For this MVP, let's assume we store applications in a top-level collection to make real-time easy.
+  // We haven't migrated applications to Firestore yet in previous steps, so let's introduce it now.
+
+  const q = query(collection(db, "applications"), where("studentEmail", "==", studentEmail));
+  return onSnapshot(q, (snapshot) => {
+    const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(apps);
+  });
+};
+
+// 5. Update Status & Notify (The "Unstop" Real-time Feature)
+export const updateApplicationStatusWithNotification = async (appId: string, newStatus: string, studentEmail: string, jobTitle: string) => {
+  if (!db) return;
+
+  // 1. Update Application Doc
+  const appRef = doc(db, "applications", appId);
+  await updateDoc(appRef, { status: newStatus });
+
+  // 2. Send Notification
+  await sendNotification(
+    studentEmail,
+    `Your application for ${jobTitle} is now: ${newStatus}`,
+    'status'
+  );
+};
+
+// 6. Submit Application (Student -> Firestore)
+export const submitApplicationToFirestore = async (application: any) => {
+  if (!db) return;
+  await addDoc(collection(db, "applications"), application);
+};
+
+// 7. Subscribe to Job Applications (Recruiter View)
+export const subscribeToJobApplications = (jobId: string, callback: (apps: any[]) => void) => {
+  if (!db) return () => { };
+  const q = query(collection(db, "applications"), where("jobId", "==", jobId));
+  return onSnapshot(q, (snapshot) => {
+    const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(apps);
+  });
 };
 
 export { auth, googleProvider, appleProvider, db };
