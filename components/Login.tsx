@@ -63,7 +63,7 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
 
       onLogin(mockProfile);
       setIsLoading(false);
-    }, 1500);
+    }, 500); // Reduced delay for responsiveness
   };
 
   const handleSocialLogin = async (providerName: 'google' | 'apple') => {

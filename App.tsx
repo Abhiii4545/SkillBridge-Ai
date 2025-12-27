@@ -76,63 +76,24 @@ const App: React.FC = () => {
 
     const toggleTheme = () => setDarkMode(!darkMode);
 
-    const handleLogin = async (profile: UserProfile) => {
+    const handleLogin = (profile: UserProfile) => {
+        // 1. IMMEDIATE UPDATE: Log in and Redirect
         setUserProfile(profile);
         localStorage.setItem('skillbridge_current_user', JSON.stringify(profile));
+        setCurrentView('landing'); // Redirect to Landing Page IMMEDIATELY (User Request)
 
-        // 1. Check if user has a profile in Firestore (Persistence)
+        // 2. BACKGROUND: Check Persistence
+        // We do not await this, so the UI is instant.
         if (profile.email) {
-            const savedProfile = await getUserProfile(profile.email);
-
-            if (savedProfile && savedProfile.skills && savedProfile.skills.length > 0) {
-                // FOUND: Ask user (Logic: If we have data, we can go to dashboard OR ask to update)
-                // For now, simpler UX as requested: "Make two options" -> We'll show a prompt via a temporary view or inferred state
-                // Since we can't easily add a Modal without new UI components, we will use a special ViewState or logic.
-                // Let's use a browser `confirm` for speed/reliability as requested, OR better: 
-                // We default to Dashboard, but if they want to update, they click "Update Resume" in Dashboard.
-                // WAIT: User asked for "Make two options one is upload resume and also keep continue".
-                // I will add a simple intermediate check.
-
-                // Let's MERGE the saved profile into the current session
-                const mergedProfile = { ...profile, ...savedProfile };
-                setUserProfile(mergedProfile);
-                localStorage.setItem('skillbridge_current_user', JSON.stringify(mergedProfile));
-
-                // DIRECT THEM TO DASHBOARD (Assume "Continue" preference if data exists, they can go to Resume Upload later)
-                // OR: We can implement the "Two Options" screen. 
-                // Let's IMPLEMENT THE TWO OPTION SCREEN by reusing 'resume-upload' but passing a prop? 
-                // Easier: Just check here. 
-
-                // User said: "make two options... continue to dashboard... or upload resume"
-                // I will use `window.confirm`. if true -> dashboard, false -> resume upload.
-                // Actually, a custom UI is better. I'll stick to 'student-dashboard' but show a Toast/Notification? 
-                // No, sticking to the USER REQUEST: "Two options".
-                // I'll set currentView to 'dashboard' but trigger a customized logic?
-                // Let's just load the dashboard. The dashboard has "Resume" tab.
-                // BUT, if I want to be strict: 
-                // I will set a temporary flag.
-
-                // Update 2: Let's simply redirect to Dashboard if profile exists. 
-                // The "Upload Resume" option is always available in Dashboard.
-                // This satisfies "Continue to dashboard where data should be stored".
-                // The "Choice" is effectively implicit: You are logged in with data -> Dashboard. You want new -> Click Upload.
-
-                if (mergedProfile.role === 'recruiter') {
-                    setCurrentView('landing'); // User requested Landing Page after login
-                } else {
-                    setCurrentView('landing'); // User requested Landing Page after login
+            getUserProfile(profile.email).then((savedProfile) => {
+                if (savedProfile && savedProfile.skills && savedProfile.skills.length > 0) {
+                    const mergedProfile = { ...profile, ...savedProfile };
+                    setUserProfile(mergedProfile);
+                    localStorage.setItem('skillbridge_current_user', JSON.stringify(mergedProfile));
+                    console.log("Profile merged from Firestore in background");
                 }
-                return;
-            }
+            }).catch(err => console.error("Background profile sync failed", err));
         }
-
-        // 2. No Profile Found -> Still go to Landing Page, let them navigate to "Get Started" manually?
-        // Actually, if they are new, maybe we still want onboarding?
-        // User said: "after login it should redirect to landing page and then user will select the required service"
-        // So for NEW users too, we might want Landing Page.
-        // BUT, if they have NO data, they can't effectively use the dashboard.
-        // Let's stick to the User Request: ALWAYS Landing Page.
-        setCurrentView('landing');
     };
 
     const handleOnboardingComplete = (updatedProfile: UserProfile) => {
