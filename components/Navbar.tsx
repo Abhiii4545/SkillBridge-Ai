@@ -37,7 +37,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, isLoggedIn, us
             className="flex items-center cursor-pointer group"
             onClick={() => onNavigate('landing')}
           >
-            <img src="/logo.png" alt="AstraX Logo" className="w-10 h-10 mr-3 group-hover:rotate-12 transition-transform shadow-lg shadow-blue-500/20 rounded-full" />
+            <img src="logo.png" alt="AstraX Logo" className="w-10 h-10 mr-3 group-hover:rotate-12 transition-transform shadow-lg shadow-blue-500/20 rounded-full" />
             <span className={`font-bold text-xl tracking-tight transition-colors ${isLanding ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
               AstraX<span className="text-blue-500">.ai</span>
             </span>

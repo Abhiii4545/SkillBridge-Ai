@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: '0.0.0.0',
     },
+    base: './', // Ensure relative paths for assets in build
     plugins: [react()],
     resolve: {
       alias: {
