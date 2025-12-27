@@ -118,27 +118,21 @@ const App: React.FC = () => {
                 // The "Choice" is effectively implicit: You are logged in with data -> Dashboard. You want new -> Click Upload.
 
                 if (mergedProfile.role === 'recruiter') {
-                    setCurrentView('recruiter-dashboard');
+                    setCurrentView('landing'); // User requested Landing Page after login
                 } else {
-                    setCurrentView('student-dashboard');
+                    setCurrentView('landing'); // User requested Landing Page after login
                 }
                 return;
             }
         }
 
-        // 2. No Profile Found -> Resume Upload Flow
-        if (profile.role === 'recruiter') {
-            setCurrentView('recruiter-dashboard');
-        } else {
-            // Student Flow Check
-            if (!profile.skills || profile.skills.length === 0) {
-                setCurrentView('resume-upload');
-            } else if (!profile.name || profile.name.trim() === '') {
-                setCurrentView('student-onboarding');
-            } else {
-                setCurrentView('student-dashboard');
-            }
-        }
+        // 2. No Profile Found -> Still go to Landing Page, let them navigate to "Get Started" manually?
+        // Actually, if they are new, maybe we still want onboarding?
+        // User said: "after login it should redirect to landing page and then user will select the required service"
+        // So for NEW users too, we might want Landing Page.
+        // BUT, if they have NO data, they can't effectively use the dashboard.
+        // Let's stick to the User Request: ALWAYS Landing Page.
+        setCurrentView('landing');
     };
 
     const handleOnboardingComplete = (updatedProfile: UserProfile) => {
