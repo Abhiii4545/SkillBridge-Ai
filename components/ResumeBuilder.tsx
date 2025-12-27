@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, ResumeData, EducationItem, ProjectItem, ExperienceItem, CertificationItem } from '../types';
 import { Loader2, Download, Save, Plus, Trash2, ChevronDown, ChevronUp, FileText, Share2, Printer, Award } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface ResumeBuilderProps {
     userProfile: UserProfile;
@@ -9,6 +11,7 @@ interface ResumeBuilderProps {
 const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ userProfile }) => {
     const [activeSection, setActiveSection] = useState<string | null>('personal');
     const printRef = useRef<HTMLDivElement>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const [resumeData, setResumeData] = useState<ResumeData>({
         fullName: userProfile.name || '',
@@ -24,8 +27,38 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ userProfile }) => {
         certifications: []
     });
 
-    const handlePrint = () => {
-        window.print();
+    const handleDownloadPDF = async () => {
+        const element = printRef.current;
+        if (!element) return;
+
+        setIsDownloading(true);
+        try {
+            const originalTransform = element.style.transform;
+            element.style.transform = 'none';
+
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            element.style.transform = originalTransform;
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`${resumeData.fullName.replace(/\\s+/g, '_')}_Resume.pdf`);
+
+        } catch (error) {
+            console.error("PDF Generation Failed:", error);
+            alert("Failed to generate PDF. Please try again.");
+        } finally {
+            setIsDownloading(false);
+        }
     };
 
     const addProject = () => {
@@ -353,8 +386,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ userProfile }) => {
             {/* RIGHT PANE: PREVIEW */}
             <div className="w-full lg:w-1/2 flex flex-col bg-slate-200 dark:bg-slate-900 rounded-[2rem] border border-slate-300 dark:border-white/5 overflow-hidden shadow-inner relative">
                 <div className="absolute top-4 right-4 z-10 flex gap-2 no-print">
-                    <button onClick={handlePrint} className="bg-slate-800 text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform" title="Print / Download PDF">
-                        <Printer className="w-5 h-5" />
+                    <button
+                        onClick={handleDownloadPDF}
+                        disabled={isDownloading}
+                        className="bg-slate-800 text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-wait"
+                        title="Download PDF"
+                    >
+                        {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                     </button>
                 </div>
 
@@ -468,32 +506,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ userProfile }) => {
                     </div>
                 </div>
             </div>
-
-            {/* Print Styles */}
-            <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #resume-preview, #resume-preview * {
-            visibility: visible;
-          }
-          #resume-preview {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 20px;
-            box-shadow: none;
-            transform: none !important;
-          }
-          @page {
-            size: auto;
-            margin: 0mm;
-          }
-        }
-      `}</style>
         </div>
     );
 };
