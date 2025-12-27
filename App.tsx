@@ -74,10 +74,9 @@ const App: React.FC = () => {
                         localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
                     });
                 } else if (userProfile.role === 'recruiter') {
-                    // Filter by company name
-                    const company = userProfile.companyName || userProfile.name || "";
-                    if (company) {
-                        unsubscribe = subscribeToRecruiterApplications(company, (apps) => {
+                    // Filter by EMAIL (Strict Isolation)
+                    if (userProfile.email) {
+                        unsubscribe = subscribeToRecruiterApplications(userProfile.email, (apps) => {
                             setApplications(apps);
                             localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
                         });
@@ -210,6 +209,7 @@ const App: React.FC = () => {
             studentEmail: userProfile.email,
             jobTitle: internship.title,
             companyName: internship.company,
+            recruiterEmail: internship.recruiterEmail, // Link to specific recruiter
             status: 'Pending',
             appliedDate: new Date().toISOString().split('T')[0],
             matchScore: internship.matchScore || 75,

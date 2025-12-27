@@ -36,8 +36,12 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
 
     // Filter jobs to show only those belonging to this recruiter's company
     const myJobs = useMemo(() => {
-        return allInternships.filter(job => job.company === companyInfo.name);
-    }, [allInternships, companyInfo.name]);
+        // Show jobs posted by THIS recruiter email OR fallback to company name matching (legacy)
+        return allInternships.filter(job =>
+            (job.recruiterEmail && job.recruiterEmail === userProfile.email) ||
+            (!job.recruiterEmail && job.company === companyInfo.name && companyInfo.name && companyInfo.name.length > 0)
+        );
+    }, [allInternships, companyInfo.name, userProfile.email]);
 
     // Form State
     const [editingJobId, setEditingJobId] = useState<string | null>(null);
@@ -136,6 +140,9 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
                 company: companyInfo.name,
                 location: 'Hyderabad',
                 requiredSkills: [],
+                skills: [], // Required by interface
+                views: 0,   // Required by interface
+                recruiterEmail: userProfile.email, // Ownership
                 postedDate: new Date().toISOString()
             };
 

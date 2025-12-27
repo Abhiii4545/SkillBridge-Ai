@@ -21,6 +21,7 @@ export interface Internship {
   applicants: number; // Changed to required
   views: number; // Added this line
   status?: 'Active' | 'Closed' | 'Draft';
+  recruiterEmail?: string; // For ownership isolation
 }
 
 export interface UserProfile {
@@ -47,6 +48,7 @@ export interface Application {
   studentEmail: string;
   jobTitle: string;
   companyName: string;
+  recruiterEmail?: string; // For ownership isolation
   status: 'Pending' | 'Shortlisted' | 'Rejected' | 'Accepted';
   appliedDate: string;
   matchScore: number;

@@ -178,11 +178,10 @@ export const submitApplicationToFirestore = async (application: any) => {
   await addDoc(collection(db, "applications"), application);
 };
 
-// 7. Subscribe to Job Applications (Recruiter View) - ALL apps for now (MVP) or filter by company
-export const subscribeToRecruiterApplications = (companyName: string, callback: (apps: any[]) => void) => {
+// 7. Subscribe to Job Applications (Recruiter View) - STRICT ISOLATION BY EMAIL
+export const subscribeToRecruiterApplications = (recruiterEmail: string, callback: (apps: any[]) => void) => {
   if (!db) return () => { };
-  // Querying all applications where companyName matches
-  const q = query(collection(db, "applications"), where("companyName", "==", companyName));
+  const q = query(collection(db, "applications"), where("recruiterEmail", "==", recruiterEmail));
   return onSnapshot(q, (snapshot) => {
     const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(apps);
