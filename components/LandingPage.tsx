@@ -1,8 +1,3 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, LayoutDashboard, Brain, Zap, Lock, BarChart3, ChevronDown, Sparkles, CheckCircle2, TrendingUp, Search, Briefcase, Code2, ExternalLink, X, FileText } from 'lucide-react';
-
-import { UserProfile } from '../types';
-
 interface LandingPageProps {
     isLoggedIn: boolean;
     onLoginStudent: () => void;
@@ -10,9 +5,32 @@ interface LandingPageProps {
     onGoToDashboard: () => void;
     onResumeAnalyzed: (profile: UserProfile) => void;
     onBuildResume: () => void;
+    onUploadResume: () => void; // NEW PROP
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, onLoginRecruiter, onGoToDashboard, onResumeAnalyzed, onBuildResume }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, onLoginRecruiter, onGoToDashboard, onResumeAnalyzed, onBuildResume, onUploadResume }) => {
+    // ... existing code ...
+    // In the return JSX:
+    {
+        isLoggedIn && (
+            <>
+                <button
+                    onClick={onGoToDashboard}
+                    className="btn-bubble bubble-primary px-8 py-4 text-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+                >
+                    <LayoutDashboard className="w-5 h-5" />
+                    Go to Dashboard
+                </button>
+                <button
+                    onClick={onUploadResume}
+                    className="btn-bubble bubble-secondary px-8 py-4 text-lg flex items-center justify-center gap-2"
+                >
+                    <Briefcase className="w-5 h-5" />
+                    Upload New Resume
+                </button>
+            </>
+        )
+    }
     const [scrollY, setScrollY] = useState(0);
 
     // Ref for the text reveal section
@@ -136,8 +154,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                                     className="btn-bubble bubble-secondary px-8 py-4 text-lg flex items-center justify-center gap-2"
                                 >
                                     <FileText className="w-5 h-5" />
-                                    Build Resume
+                                    Resume Builder
                                 </button>
+                                {/* NEW BUTTON REQUESTED BY USER */}
+                                <button
+                                // OR better: The user checks "Update Resume" in Dashboard.
+                                // But the user specially asked "keep another button here upload resume i want that feature after login as well".
+                                // I'll call a new prop or just `onLoginStudent` which currently might redirect to Dashboard.
+                                // Let's check `App.tsx`: `handleLogin` redirects to Landing.
+                                // We need a specific action.
+                                // Let's assume `onBuildResume` is strictly builder.
+                                // I will temporarily make it call `onLoginStudent` and assume we can add logic there?
+                                // No, I'll add a new button that resets the specific view state in App.
+                                // BUT I can't change App.tsx props easily without changing interface.
+                                // Let's look at `App.tsx` passing props.
+                                // It passes `onLoginStudent={() => setCurrentView('login')}`...
+                                // If I want to "Upload New Resume", I should set view to `resume-upload`.
+                                // I don't have that prop here.
+                                // I will Use `onLoginStudent` but I need to signal "Upload".
+                                // Actually, `onLoginStudent` sets view to `login`.
+                                // Login check redirects to Landing.
+                                // This circle won't work for "Upload".
+                                // I will Replace `onBuildResume` logic? No.
+                                // I will modify `LandingPageProps` to take `onUploadResume`.
+                                />
                             </>
                         )}
                     </div>

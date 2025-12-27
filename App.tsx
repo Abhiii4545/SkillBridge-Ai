@@ -13,6 +13,21 @@ import { saveUserProfile, getUserProfile } from './services/firebase'; // Persis
 const App: React.FC = () => {
     // START STRICT: Default to 'login' instead of 'landing'
     const [currentView, setCurrentView] = useState<ViewState>('landing');
+
+    // REFRESH INTERNSHIPS ON VIEW CHANGE (Fix for Visibility Issue)
+    // When switching to student dashboard, ensure we have the latest from localStorage
+    // just in case it was updated by another tab or wasn't caught by state.
+    useEffect(() => {
+        if (currentView === 'student-dashboard') {
+            const storedInternships = localStorage.getItem('skillbridge_internships');
+            if (storedInternships) {
+                try {
+                    setInternships(JSON.parse(storedInternships));
+                } catch (e) { console.error("Sync error", e); }
+            }
+        }
+    }, [currentView]);
+
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loginRole, setLoginRole] = useState<'student' | 'recruiter'>('student');
     const [applications, setApplications] = useState<Application[]>([]);
@@ -207,9 +222,10 @@ const App: React.FC = () => {
                         isLoggedIn={!!userProfile}
                         onLoginStudent={() => navigateToLogin('student')}
                         onLoginRecruiter={() => navigateToLogin('recruiter')}
-                        onResumeAnalyzed={handleResumeAnalyzed} // Kept for consistency but likely unused
                         onGoToDashboard={() => setCurrentView(userProfile?.role === 'recruiter' ? 'recruiter-dashboard' : 'student-dashboard')}
+                        onResumeAnalyzed={handleResumeAnalyzed}
                         onBuildResume={handleBuildResume}
+                        onUploadResume={() => setCurrentView('resume-upload')}
                     />
                 )}
 
