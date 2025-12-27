@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1oCBmKkALZqxEgPu58G0GXpXQu9B1swoO
+View your app in AI Studio: https://github.com/Abhiii4545/SkillBridge-Ai.git
 
 ## Run Locally
 
