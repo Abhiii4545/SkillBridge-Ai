@@ -19,16 +19,18 @@ const extractTextFromPdf = async (base64Data: string): Promise<string> => {
 
         const loadingTask = pdfjsLib.getDocument({ data: bytes });
         const pdf = await loadingTask.promise;
-        let fullText = '';
 
+        // PARALLEL PAGE PROCESSING (Speed Boost)
+        const pagePromises = [];
         for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            // Join with newlines to preserve vertical structure
-            const pageText = textContent.items.map((item: any) => item.str).join('\n');
-            fullText += pageText + '\n\n';
+            pagePromises.push(pdf.getPage(i).then(page => page.getTextContent()));
         }
-        return fullText;
+
+        const pageContents = await Promise.all(pagePromises);
+        return pageContents.map(content =>
+            content.items.map((item: any) => item.str).join('\n')
+        ).join('\n\n');
+
     } catch (error) {
         console.error("PDF Extraction Failed:", error);
         return atob(base64Data);
@@ -67,12 +69,10 @@ const callAI = async (systemPrompt: string, userPrompt: string, retries = 3): Pr
 
 // --- Exported Functions ---
 
-// --- Exported Functions ---
-
 export const analyzeResume = async (base64Data: string, mimeType: string = 'application/pdf'): Promise<UserProfile> => {
     const resumeText = await extractTextFromPdf(base64Data);
 
-    // SPEED OPTIMIZATION: Regex Fallbacks for instant, accurate contact info
+    // SPEED OPTIMIZATION: Regex Fallbacks
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
     const phoneRegex = /(\+?\d{1,3}[-.]?)?\s*\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/;
 
@@ -84,20 +84,22 @@ export const analyzeResume = async (base64Data: string, mimeType: string = 'appl
 
     const systemPrompt = `You are a fast API. Extract resume data. Return JSON only.`;
     const userPrompt = `
-  RESUME TEXT:
+  RESUME:
   ${resumeText.substring(0, 15000)}
 
   INSTRUCTIONS:
-  Extract structured data. Use inference for missing fields.
-  JSON Format:
+  Extract data accurately. Try to infer missing fields.
+  Example Skills: ["React", "TypeScript", "Node.js"]
+
+  JSON Structure:
   {
     "name": "string",
     "email": "string",
     "phone": "string",
     "university": "string",
-    "skills": ["skill1", "skill2"],
-    "missingSkills": ["ms1", "ms2", "ms3"],
-    "summary": "3 sentence summary",
+    "skills": ["string", "string"],
+    "missingSkills": ["string", "string", "string"],
+    "summary": "Professional summary",
     "experienceLevel": "Student/Entry/Experienced"
   }
   

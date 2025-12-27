@@ -181,9 +181,9 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                 setApplicationError("Failed to read file.");
             };
         } else {
-            // Allow applying without a new resume (optional, can be enforced)
-            onApply(selectedInternship);
-            resetModal();
+            // Fix: Require resume upload if not present
+            setApplicationError("Please upload your resume to apply.");
+            return;
         }
     };
 
