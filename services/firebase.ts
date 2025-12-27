@@ -14,15 +14,19 @@ import { getAuth, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
 
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app); // Initialize Firestore
+const app = (firebaseConfig.apiKey) ? initializeApp(firebaseConfig) : null;
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
 const googleProvider = new GoogleAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
 
+if (!app) {
+  console.warn("Firebase credentials missing. Running in offline mode.");
+}
+
 // --- Helper Functions for Persistence ---
 export const saveUserProfile = async (email: string, profile: any) => {
-  if (!email) return;
+  if (!email || !db) return; // Return if no DB
   try {
     await setDoc(doc(db, "users", email), profile, { merge: true });
     console.log("Profile saved to Firestore");
@@ -32,7 +36,7 @@ export const saveUserProfile = async (email: string, profile: any) => {
 };
 
 export const getUserProfile = async (email: string): Promise<any | null> => {
-  if (!email) return null;
+  if (!email || !db) return null; // Return null if no DB
   try {
     const docRef = doc(db, "users", email);
     const docSnap = await getDoc(docRef);
@@ -40,9 +44,9 @@ export const getUserProfile = async (email: string): Promise<any | null> => {
       return docSnap.data();
     }
   } catch (e) {
-    console.error("Error fetching profile:", e);
+    console.error("Error getting profile:", e);
   }
   return null;
 };
 
-export { app, auth, db, googleProvider, appleProvider };
+export { auth, googleProvider, appleProvider, db };

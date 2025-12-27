@@ -69,9 +69,22 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
   const handleSocialLogin = async (providerName: 'google' | 'apple') => {
     setIsLoading(true);
     try {
-      const provider = providerName === 'google' ? googleProvider : appleProvider;
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+      let user: any;
+      if (!auth) {
+        console.warn("Firebase not configured. using mock social login.");
+        // Mock User for Offline Mode
+        user = {
+          displayName: "Demo User",
+          email: "demo@example.com",
+          photoURL: null
+        };
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+      } else {
+        const provider = providerName === 'google' ? googleProvider : appleProvider;
+        const result = await signInWithPopup(auth, provider);
+        user = result.user;
+      }
 
       // Check for existing saved profile to merge (persistence fix)
       const savedProfileStr = role === 'recruiter'
@@ -101,13 +114,18 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
         summary: "Imported from " + providerName,
         university: "", // Needs to be filled
         companyName: "",
-        ...existingData // Merge saved data (like companyName)
+        // Merge existing data if any (e.g. skills from previous sessions)
+        ...existingData
       };
 
+      if (role === 'recruiter') {
+        profile.companyName = existingData.companyName || ""; // Trigger setup if empty
+      }
+
       onLogin(profile);
-    } catch (error) {
-      console.error("Social login failed", error);
-      alert("Login failed. Please try again.");
+    } catch (error: any) {
+      console.error("Social login error:", error);
+      alert("Social login failed. Please try the email login/mock login button.");
     } finally {
       setIsLoading(false);
     }

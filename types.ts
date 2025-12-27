@@ -12,12 +12,14 @@ export interface Internship {
   type: 'Remote' | 'On-site' | 'Hybrid';
   stipend: string;
   description: string;
+  skills: string[]; // Added this line
   requiredSkills: string[];
   matchScore?: number; // Calculated by AI or simulated logic
   matchReason?: string;
   postedDate: string;
   logoUrl?: string;
-  applicants?: number;
+  applicants: number; // Changed to required
+  views: number; // Added this line
   status?: 'Active' | 'Closed' | 'Draft';
 }
 
