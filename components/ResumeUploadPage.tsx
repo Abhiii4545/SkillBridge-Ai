@@ -5,11 +5,12 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 
 interface ResumeUploadPageProps {
     onAnalysisComplete: (profile: UserProfile) => void;
+    onSkip: () => void;
 }
 
-const ResumeUploadPage: React.FC<ResumeUploadPageProps> = ({ onAnalysisComplete }) => {
+const ResumeUploadPage: React.FC<ResumeUploadPageProps> = ({ onAnalysisComplete, onSkip }) => {
     return (
-        <div className="min-h-screen bg-radion-bg text-white flex flex-colitems-center justify-center p-4">
+        <div className="min-h-screen bg-radion-bg text-white flex flex-col items-center justify-center p-4">
             <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-radion-primary/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
 
             <div className="w-full max-w-4xl mx-auto z-10 flex flex-col items-center pt-20">
@@ -36,7 +37,10 @@ const ResumeUploadPage: React.FC<ResumeUploadPageProps> = ({ onAnalysisComplete 
 
                 <div className="mt-12 flex flex-col items-center gap-4 opacity-60">
                     <p className="text-sm text-slate-500">Don't have a resume?</p>
-                    <button className="text-sm text-white font-semibold flex items-center gap-2 hover:gap-3 transition-all">
+                    <button
+                        onClick={onSkip}
+                        className="text-sm text-white font-semibold flex items-center gap-2 hover:gap-3 transition-all hover:text-radion-accent cursor-pointer"
+                    >
                         Build one manually <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>

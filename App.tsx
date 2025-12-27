@@ -217,6 +217,20 @@ const App: React.FC = () => {
                 {currentView === 'resume-upload' && (
                     <ResumeUploadPage
                         onAnalysisComplete={handleResumeAnalyzed}
+                        onSkip={() => {
+                            // Manual build: Create minimal profile and go to onboarding/dashboard
+                            const minimalProfile: UserProfile = {
+                                ...userProfile,
+                                name: userProfile?.name || 'New User',
+                                email: userProfile?.email || '',
+                                role: 'student',
+                                skills: [],
+                                experienceLevel: 'Student',
+                                summary: '',
+                                missingSkills: []
+                            };
+                            handleResumeAnalyzed(minimalProfile);
+                        }}
                     />
                 )}
 
