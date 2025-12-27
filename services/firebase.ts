@@ -128,17 +128,22 @@ export const markNotificationAsRead = async (id: string) => {
 };
 
 // 4. Live Applications (Student "My Applications" tab)
+// 4. Live Applications (Student "My Applications" tab)
 export const subscribeToStudentApplications = (studentEmail: string, callback: (apps: any[]) => void) => {
-  if (!db || !studentEmail) return () => { };
-  // Assuming applications are stored in a root 'applications' collection for now, 
-  // or filtering internships? 
-  // For this MVP, let's assume we store applications in a top-level collection to make real-time easy.
-  // We haven't migrated applications to Firestore yet in previous steps, so let's introduce it now.
+  if (!db || !studentEmail) {
+    console.warn("subscribeToStudentApplications skipped: Missing DB or Email", studentEmail);
+    return () => { };
+  }
 
+  console.log("Subscribing to applications for:", studentEmail);
   const q = query(collection(db, "applications"), where("studentEmail", "==", studentEmail));
+
   return onSnapshot(q, (snapshot) => {
     const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log("Applications received:", apps.length);
     callback(apps);
+  }, (error) => {
+    console.error("Error subscribing to applications:", error);
   });
 };
 

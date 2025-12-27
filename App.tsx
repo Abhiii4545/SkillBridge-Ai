@@ -118,6 +118,9 @@ const App: React.FC = () => {
                                 missingSkills: []
                             };
                             await saveUserProfile(user.email, profile);
+                        } else {
+                            // FAST FIX: Ensure email is present in the object even if missing in DB data
+                            profile = { ...profile, email: user.email };
                         }
 
                         setUserProfile(profile);
