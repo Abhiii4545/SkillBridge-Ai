@@ -59,7 +59,7 @@ const callAI = async (systemPrompt: string, userPrompt: string, retries = 3): Pr
             console.error(`AI API Error (Attempt ${attempt + 1}):`, err);
             attempt++;
             if (attempt >= retries) throw err;
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
     throw new Error("AI Service failed to respond.");
