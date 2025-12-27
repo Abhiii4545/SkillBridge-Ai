@@ -235,12 +235,9 @@ const App: React.FC = () => {
 
     const handleProfileUpdate = (updatedProfile: UserProfile) => {
         setUserProfile(updatedProfile);
-        localStorage.setItem('skillbridge_current_user', JSON.stringify(updatedProfile));
-
-        if (updatedProfile.role === 'recruiter') {
-            localStorage.setItem('skillbridge_saved_recruiter_profile', JSON.stringify(updatedProfile));
-        } else {
-            localStorage.setItem('skillbridge_saved_profile', JSON.stringify(updatedProfile));
+        // Persist to Cloud
+        if (updatedProfile.email) {
+            saveUserProfile(updatedProfile.email, updatedProfile).catch(console.error);
         }
     };
 
