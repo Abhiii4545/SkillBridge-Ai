@@ -45,6 +45,18 @@ const App: React.FC = () => {
         }
     }, []);
 
+    // Load Applications (Fix for Persistence)
+    useEffect(() => {
+        const storedApps = localStorage.getItem('skillbridge_applications');
+        if (storedApps) {
+            try {
+                setApplications(JSON.parse(storedApps));
+            } catch (e) {
+                console.error("Failed to parse applications", e);
+            }
+        }
+    }, []);
+
     // Check for active session
     useEffect(() => {
         const storedUser = localStorage.getItem('skillbridge_current_user');
