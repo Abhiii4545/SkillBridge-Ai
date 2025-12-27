@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { UserProfile, Internship, Application, LearningRoadmap } from '../types';
-import { matchInternships, generateCareerPath } from '../services/geminiService';
+import { matchInternships, generateCareerPath, generateATSResume } from '../services/openaiService';
 import InternshipCard from './InternshipCard';
 import ChatWidget from './ChatWidget';
 import ResumeBuilder from './ResumeBuilder';

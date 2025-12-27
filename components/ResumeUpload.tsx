@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
-import { analyzeResume } from '../services/geminiService';
+import { analyzeResume } from '../services/openaiService';
 import { UserProfile } from '../types';
 
 interface ResumeUploadProps {
@@ -57,12 +57,12 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onAnalysisComplete }) => {
       reader.onload = async () => {
         const base64String = (reader.result as string).split(',')[1];
         try {
-            const profile = await analyzeResume(base64String, file.type);
-            onAnalysisComplete(profile);
+          const profile = await analyzeResume(base64String, file.type);
+          onAnalysisComplete(profile);
         } catch (err) {
-            console.error(err);
-            setError("Failed to analyze resume with Gemini. Please try again.");
-            setIsAnalyzing(false);
+          console.error(err);
+          setError("Failed to analyze resume with Gemini. Please try again.");
+          setIsAnalyzing(false);
         }
       };
       reader.onerror = () => {
@@ -78,23 +78,22 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onAnalysisComplete }) => {
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      <div 
-        className={`relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300 group cursor-pointer ${
-          isDragging 
-            ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-xl' 
-            : isAnalyzing 
-                ? 'border-slate-200 bg-slate-50' 
-                : 'border-slate-300 hover:border-blue-500 hover:bg-slate-50 hover:shadow-lg bg-white'
-        }`}
+      <div
+        className={`relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300 group cursor-pointer ${isDragging
+            ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-xl'
+            : isAnalyzing
+              ? 'border-slate-200 bg-slate-50'
+              : 'border-slate-300 hover:border-blue-500 hover:bg-slate-50 hover:shadow-lg bg-white'
+          }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => !isAnalyzing && fileInputRef.current?.click()}
       >
-        <input 
-          type="file" 
+        <input
+          type="file"
           ref={fileInputRef}
-          className="hidden" 
+          className="hidden"
           accept="application/pdf"
           onChange={handleFileSelect}
         />
@@ -102,10 +101,10 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onAnalysisComplete }) => {
         {isAnalyzing ? (
           <div className="flex flex-col items-center justify-center py-4">
             <div className="relative mb-6">
-                <div className="absolute inset-0 bg-blue-200 rounded-full blur animate-pulse"></div>
-                <div className="relative bg-white p-4 rounded-full shadow-sm">
-                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-                </div>
+              <div className="absolute inset-0 bg-blue-200 rounded-full blur animate-pulse"></div>
+              <div className="relative bg-white p-4 rounded-full shadow-sm">
+                <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+              </div>
             </div>
             <h3 className="text-xl font-bold text-slate-900 mb-2">Analyzing Profile...</h3>
             <p className="text-slate-500 text-sm">Gemini is reading your projects and skills.</p>
@@ -134,18 +133,18 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onAnalysisComplete }) => {
           <span className="text-sm font-medium">{error}</span>
         </div>
       )}
-      
+
       {!isAnalyzing && !error && (
         <div className="mt-8 text-center flex items-center justify-center gap-6 text-slate-400 grayscale opacity-70">
-            <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                <span className="text-xs font-semibold">PDF Only</span>
-            </div>
-            <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-            <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-xs font-semibold">ATS Friendly</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            <span className="text-xs font-semibold">PDF Only</span>
+          </div>
+          <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-xs font-semibold">ATS Friendly</span>
+          </div>
         </div>
       )}
     </div>
