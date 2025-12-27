@@ -13,7 +13,7 @@ console.log("⚠️ ACTIVE GEMINI MODEL:", MODEL_NAME);
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const generateContentWithRetry = async (prompt: string, attachmentParts?: any[], retries = 3, initialDelay = 1000): Promise<string> => {
+const generateContentWithRetry = async (prompt: string, attachmentParts?: any[], retries = 5, initialDelay = 2000): Promise<string> => {
   let attempt = 0;
   while (attempt < retries) {
     try {
@@ -28,10 +28,20 @@ const generateContentWithRetry = async (prompt: string, attachmentParts?: any[],
       return response.text();
 
     } catch (error: any) {
-      if (error?.status === 429 || error?.toString().includes('429') || error?.toString().includes('Quota exceeded')) {
+      const isRateLimit = error?.status === 429 ||
+        error?.toString().includes('429') ||
+        error?.toString().includes('Quota exceeded');
+
+      if (isRateLimit) {
         attempt++;
-        if (attempt >= retries) throw error;
-        const waitTime = initialDelay * Math.pow(2, attempt - 1);
+        if (attempt >= retries) throw new Error("Server is currently busy (Rate Limit). Please try again in a minute.");
+
+        // Extract retry delay from error if possible, otherwise use exponential backoff
+        let waitTime = initialDelay * Math.pow(2, attempt - 1);
+        if (error?.retryDelay) {
+          waitTime = Math.max(waitTime, parseInt(error.retryDelay) * 1000); // Standardize to ms
+        }
+
         console.warn(`Rate limit hit. Retrying in ${waitTime}ms... (Attempt ${attempt}/${retries})`);
         await delay(waitTime);
       } else {
