@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import { Loader2, ArrowRight, Building2, GraduationCap } from 'lucide-react';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider, appleProvider } from '../services/firebase';
 
 interface LoginProps {
   initialRole: 'student' | 'recruiter';
@@ -12,7 +14,7 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
   const [role, setRole] = useState<'student' | 'recruiter'>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
-  
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -21,48 +23,94 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
     setTimeout(() => {
       let mockProfile: UserProfile | null = null;
 
-      if (role === 'student') {
-        const savedProfileStr = localStorage.getItem('skillbridge_saved_profile');
-        if (savedProfileStr) {
-            try {
-                const saved = JSON.parse(savedProfileStr);
-                if (saved.role === 'student') {
-                    mockProfile = {
-                        ...saved,
-                        email: email || saved.email
-                    };
-                }
-            } catch (err) {
-                console.error("Error reading saved profile", err);
-            }
-        }
+      const savedProfileStr = role === 'recruiter'
+        ? localStorage.getItem('skillbridge_saved_recruiter_profile')
+        : localStorage.getItem('skillbridge_saved_profile');
+      let savedProfile: UserProfile | null = null;
 
-        if (!mockProfile) {
-            mockProfile = {
-                name: "",
-                email: email || "student@example.com",
-                role: 'student',
-                university: "",
-                skills: [],
-                missingSkills: [],
-                summary: "",
-                experienceLevel: "Student"
-            };
+      if (savedProfileStr) {
+        try {
+          const parsed = JSON.parse(savedProfileStr);
+          if (parsed.role === role) {
+            savedProfile = parsed;
+          }
+        } catch (e) {
+          console.error("Error parsing saved profile", e);
         }
-      } else {
-         mockProfile = {
-            name: "TechFlow HR",
-            email: email || "hr@techflow.com",
-            role: 'recruiter',
-            skills: [],
-            summary: "Recruiter for TechFlow Solutions",
-            companyName: "TechFlow Solutions"
-         };
       }
-      
+
+      if (role === 'student') {
+        mockProfile = savedProfile ? { ...savedProfile, email: email || savedProfile.email } : {
+          name: "",
+          email: email || "student@example.com",
+          role: 'student',
+          university: "",
+          skills: [],
+          missingSkills: [],
+          summary: "",
+          experienceLevel: "Student"
+        };
+      } else {
+        mockProfile = savedProfile ? { ...savedProfile, email: email || savedProfile.email } : {
+          name: "TechFlow HR",
+          email: email || "hr@techflow.com",
+          role: 'recruiter',
+          skills: [],
+          summary: "Recruiter for TechFlow Solutions",
+          companyName: "" // Default to empty to trigger setup if new
+        };
+      }
+
       onLogin(mockProfile);
       setIsLoading(false);
     }, 1500);
+  };
+
+  const handleSocialLogin = async (providerName: 'google' | 'apple') => {
+    setIsLoading(true);
+    try {
+      const provider = providerName === 'google' ? googleProvider : appleProvider;
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check for existing saved profile to merge (persistence fix)
+      const savedProfileStr = role === 'recruiter'
+        ? localStorage.getItem('skillbridge_saved_recruiter_profile')
+        : localStorage.getItem('skillbridge_saved_profile');
+      let existingData: Partial<UserProfile> = {};
+
+      if (savedProfileStr) {
+        try {
+          const saved = JSON.parse(savedProfileStr);
+          if (saved.email === user.email && saved.role === role) {
+            existingData = saved;
+          }
+        } catch (e) {
+          console.error("Error reading saved profile for merge", e);
+        }
+      }
+
+      // Map Firebase user to UserProfile
+      const profile: UserProfile = {
+        name: user.displayName || "Unknown User",
+        email: user.email || "",
+        role: role,
+        experienceLevel: role === 'student' ? 'Student' : undefined,
+        skills: [],
+        missingSkills: [],
+        summary: "Imported from " + providerName,
+        university: "", // Needs to be filled
+        companyName: "",
+        ...existingData // Merge saved data (like companyName)
+      };
+
+      onLogin(profile);
+    } catch (error) {
+      console.error("Social login failed", error);
+      alert("Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -70,7 +118,7 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
       <div className="relative z-10 w-full max-w-md">
@@ -84,26 +132,48 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
           <div className="bg-[#050511]/50 p-2 rounded-full flex mb-8 border border-white/5">
             <button
               onClick={() => setRole('student')}
-              className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-full transition-all duration-300 ${
-                role === 'student' 
-                  ? 'btn-bubble bubble-primary shadow-lg' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-full transition-all duration-300 ${role === 'student'
+                ? 'btn-bubble bubble-primary shadow-lg'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               <GraduationCap className="w-4 h-4 mr-2" />
               Student
             </button>
             <button
               onClick={() => setRole('recruiter')}
-              className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-full transition-all duration-300 ${
-                role === 'recruiter' 
-                  ? 'btn-bubble bubble-secondary shadow-lg' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-full transition-all duration-300 ${role === 'recruiter'
+                ? 'btn-bubble bubble-secondary shadow-lg'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               <Building2 className="w-4 h-4 mr-2" />
               Recruiter
             </button>
+          </div>
+
+          <div className="space-y-4 mb-8">
+            <button
+              onClick={() => handleSocialLogin('google')}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center py-3 px-4 bg-white text-black font-bold rounded-full shadow-lg hover:bg-slate-100 transition-all duration-200"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 mr-2" alt="Google" />
+              Sign in with Google
+            </button>
+            <button
+              onClick={() => handleSocialLogin('apple')}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center py-3 px-4 bg-black text-white border border-white/20 font-bold rounded-full shadow-lg hover:bg-gray-900 transition-all duration-200"
+            >
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05 1.57-3.4 1.64-1.35.07-3.13-.88-3.7-.88-.57 0-2.42.92-3.8.92-2.1.02-4.52-2.2-5.71-5.69-2.09-6.1 1.66-9.98 4.79-10.3 1.54-.16 2.87.82 3.8.82.93 0 2.22-.92 3.9-.82 3.1.2 4.09 1.52 4.4 1.86-3.08 1.86-2.43 6.95.83 8.35-.6 1.76-1.5 3.52-2.8 4.67-.7 1.09-1.99 2.15-3.37 2.15h-.04c.03.01.07.03.1.08zm-2.85-15.6c.72-.94 1.22-2.22 1.08-3.48-1.07.04-2.35.79-3.09 1.7-.65.8-1.2 2.12-1.07 3.32 1.18.1 2.37-.6 3.08-1.54z" /></svg>
+              Sign in with Apple
+            </button>
+          </div>
+
+          <div className="relative mb-8">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+            <div className="relative flex justify-center text-sm"><span className="px-2 bg-[#050511] text-slate-500">Or continue with email</span></div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -131,9 +201,8 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full flex items-center justify-center py-4 px-4 text-white text-lg font-bold shadow-xl transition-all duration-200 btn-bubble ${
-                role === 'student' ? 'bubble-primary' : 'bubble-secondary'
-              }`}
+              className={`w-full flex items-center justify-center py-4 px-4 text-white text-lg font-bold shadow-xl transition-all duration-200 btn-bubble ${role === 'student' ? 'bubble-primary' : 'bubble-secondary'
+                }`}
             >
               {isLoading ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -146,13 +215,9 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
             </button>
           </form>
 
-          <div className="mt-8 text-center">
-            <button onClick={onBack} className="text-sm font-medium text-slate-500 hover:text-white transition-colors">
-              &larr; Back to Home
-            </button>
-          </div>
+
         </div>
-        
+
         <p className="text-center text-xs text-slate-500 mt-8">
           Protected by Google Gemini & Firebase Security
         </p>

@@ -79,7 +79,7 @@ export interface LearningRoadmap {
   nextImmediateStep: string;
 }
 
-export type ViewState = 'landing' | 'login' | 'student-onboarding' | 'student-dashboard' | 'recruiter-dashboard';
+export type ViewState = 'landing' | 'login' | 'student-onboarding' | 'student-dashboard' | 'recruiter-dashboard' | 'resume-upload';
 
 export interface SectionProps {
   id: string;
@@ -111,6 +111,12 @@ export interface ExperienceItem {
   description: string;
 }
 
+export interface CertificationItem {
+  id: string;
+  name: string;
+  link: string;
+}
+
 export interface ResumeData {
   fullName: string;
   email: string;
@@ -121,6 +127,6 @@ export interface ResumeData {
   skills: string[];
   projects: ProjectItem[];
   experience: ExperienceItem[];
-  certifications: string[];
+  certifications: CertificationItem[];
   summary: string;
 }
