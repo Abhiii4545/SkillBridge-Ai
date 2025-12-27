@@ -5,7 +5,7 @@ import InternshipCard from './InternshipCard';
 import ChatWidget from './ChatWidget';
 import ResumeBuilder from './ResumeBuilder';
 import { Loader2, User, Award, TrendingUp, RefreshCw, Sparkles, MapPin, Building2, ArrowRight, Search, Filter, Briefcase, FileText, Target, Calendar, CheckSquare, BarChart2, ChevronDown, ChevronUp, Briefcase as ProjectIcon, UserCircle, AlertTriangle, Clock, XCircle, CheckCircle2, UploadCloud, X } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 
 interface DashboardProps {
     userProfile: UserProfile;
@@ -320,29 +320,41 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                             </div>
 
                             {/* Chart */}
-                            <div className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-white/5">
-                                <h3 className="font-bold text-slate-900 dark:text-white mb-4">Skill Confidence</h3>
-                                <div className="h-64 w-full" style={{ minHeight: '250px' }}>
-                                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                                        <BarChart data={skillData}>
-                                            <XAxis dataKey="name" hide />
-                                            <YAxis hide domain={[0, 100]} />
+                            <div className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-white/5 relative overflow-hidden group hover:border-indigo-500/30 transition-colors duration-500">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[50px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-500"></div>
+                                <h3 className="font-bold text-slate-900 dark:text-white mb-2 relative z-10 flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-indigo-500" />
+                                    Skill Constellation
+                                </h3>
+                                <div className="h-64 w-full relative z-10" style={{ minHeight: '250px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={skillData}>
+                                            <PolarGrid stroke="#334155" strokeOpacity={0.2} />
+                                            <PolarAngleAxis
+                                                dataKey="name"
+                                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
+                                            />
+                                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                            <Radar
+                                                name="Confidence"
+                                                dataKey="value"
+                                                stroke="#8b5cf6"
+                                                strokeWidth={3}
+                                                fill="#8b5cf6"
+                                                fillOpacity={0.3}
+                                            />
                                             <Tooltip
-                                                cursor={{ fill: 'transparent' }}
+                                                cursor={false}
                                                 contentStyle={{
                                                     borderRadius: '12px',
-                                                    border: 'none',
-                                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                                                    color: '#1e293b'
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.3)',
+                                                    backgroundColor: '#0f172a',
+                                                    color: '#f8fafc'
                                                 }}
+                                                itemStyle={{ color: '#a78bfa' }}
                                             />
-                                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                                {skillData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#6366f1' : '#a855f7'} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
+                                        </RadarChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
