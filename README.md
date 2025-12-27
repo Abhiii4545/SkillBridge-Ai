@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://github.com/Abhiii4545/SkillBridge-Ai.git
+View your app in AI Studio: https://skill-bridge-ai-two.vercel.ap
 
 ## Run Locally
 
