@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
-import { analyzeResume } from '../services/openaiService';
+import { analyzeResume } from '../services/geminiService';
 import { UserProfile } from '../types';
 
 interface ResumeUploadProps {
@@ -80,10 +80,10 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onAnalysisComplete }) => {
     <div className="w-full max-w-xl mx-auto">
       <div
         className={`relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300 group cursor-pointer ${isDragging
-            ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-xl'
-            : isAnalyzing
-              ? 'border-slate-200 bg-slate-50'
-              : 'border-slate-300 hover:border-blue-500 hover:bg-slate-50 hover:shadow-lg bg-white'
+          ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-xl'
+          : isAnalyzing
+            ? 'border-slate-200 bg-slate-50'
+            : 'border-slate-300 hover:border-blue-500 hover:bg-slate-50 hover:shadow-lg bg-white'
           }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

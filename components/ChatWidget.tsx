@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, User, Sparkles } from 'lucide-react';
-import { getChatResponse } from '../services/openaiService';
+import { getChatResponse } from '../services/geminiService';
 import { UserProfile } from '../types';
 
 interface ChatWidgetProps {
@@ -100,8 +100,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ userProfile }) => {
                                 )}
                                 <div
                                     className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                                            ? 'bg-slate-900 text-white rounded-br-none'
-                                            : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                                        ? 'bg-slate-900 text-white rounded-br-none'
+                                        : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
                                         }`}
                                 >
                                     {msg.text}
