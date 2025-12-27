@@ -8,7 +8,7 @@ import StudentOnboarding from './components/StudentOnboarding';
 import ResumeUploadPage from './components/ResumeUploadPage';
 import { ViewState, UserProfile, Application, Internship } from './types';
 import { MOCK_INTERNSHIPS } from './constants';
-import { saveUserProfile, getUserProfile, getInternshipsFromFirestore, subscribeToNotifications, submitApplicationToFirestore, subscribeToRecruiterApplications, auth } from './services/firebase'; // Persistence
+import { saveUserProfile, getUserProfile, getInternshipsFromFirestore, subscribeToInternships, subscribeToNotifications, submitApplicationToFirestore, subscribeToRecruiterApplications, auth } from './services/firebase'; // Persistence
 import { onAuthStateChanged } from 'firebase/auth';
 
 const App: React.FC = () => {
@@ -50,20 +50,14 @@ const App: React.FC = () => {
         }
     }, [darkMode]);
 
-    // Load Internships (Firestore ONLY)
+    // Load Internships (Real-Time)
     useEffect(() => {
-        const loadInternships = async () => {
-            try {
-                const cloudInternships = await getInternshipsFromFirestore();
-                if (cloudInternships && cloudInternships.length > 0) {
-                    setInternships(cloudInternships);
-                }
-            } catch (e) {
-                console.error("Failed to load internships from Cloud:", e);
-                // No local storage fallback as requested
+        const unsubscribe = subscribeToInternships((cloudInternships) => {
+            if (cloudInternships) {
+                setInternships(cloudInternships);
             }
-        };
-        loadInternships();
+        });
+        return () => unsubscribe();
     }, []);
 
 

@@ -81,6 +81,15 @@ export const getInternshipsFromFirestore = async (): Promise<any[]> => {
   }
 };
 
+export const subscribeToInternships = (callback: (internships: any[]) => void) => {
+  if (!db) return () => { };
+  const q = query(collection(db, "internships"), orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    const jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(jobs);
+  });
+};
+
 // --- Real-Time Notifications & Applications ---
 
 // 1. Subscribe to Notifications (Live Bell Icon)
