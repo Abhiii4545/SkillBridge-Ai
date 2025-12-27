@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { UserProfile, Internship, Application, LearningRoadmap } from '../types';
 import { matchInternships, generateCareerPath, generateATSResume } from '../services/geminiService';
 import { formatDistanceToNow } from 'date-fns';
+import InternshipCard from './InternshipCard';
 import ChatWidget from './ChatWidget';
 import ResumeBuilder from './ResumeBuilder';
 import { Loader2, User, Award, TrendingUp, RefreshCw, Sparkles, MapPin, Building2, ArrowRight, Search, Filter, Briefcase, FileText, Target, Calendar, CheckSquare, BarChart2, ChevronDown, ChevronUp, Briefcase as ProjectIcon, UserCircle, AlertTriangle, Clock, XCircle, CheckCircle2, UploadCloud, X, Heart } from 'lucide-react';
@@ -496,55 +497,12 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                                 <div className="space-y-4">
                                     {filteredInternships.length > 0 ? (
                                         filteredInternships.map((internship) => (
-                                            <div key={internship.id} className="group bg-white dark:bg-[#101025] rounded-2xl border border-slate-200 dark:border-white/5 p-6 hover:border-radion-primary/50 transition-all hover:shadow-[0_0_20px_rgba(79,70,229,0.1)] relative overflow-hidden">
-                                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-radion-primary/10 to-transparent rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
-
-                                                <div className="flex justify-between items-start mb-4 relative z-10">
-                                                    <div>
-                                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-radion-primary transition-colors">{internship.title}</h3>
-                                                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
-                                                            <Building2 className="w-3.5 h-3.5" />
-                                                            {internship.company}
-                                                            {/* MATCH BADGE */}
-                                                            {(internship as any).dynamicMatchScore > 0 && (
-                                                                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-bold border ${(internship as any).dynamicMatchScore >= 80 ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                                                    (internship as any).dynamicMatchScore >= 50 ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                                        'bg-red-500/10 text-red-500 border-red-500/20'
-                                                                    }`}>
-                                                                    {(internship as any).dynamicMatchScore}% Match
-                                                                </span>
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                    <button className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-red-500">
-                                                        <Heart className="w-5 h-5" />
-                                                    </button>
-                                                </div>
-                                                <div className="flex flex-wrap gap-2 mb-4 relative z-10">
-                                                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded-full font-medium">{internship.type}</span>
-                                                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs rounded-full font-medium">{internship.location}</span>
-                                                    {internship.stipend && (
-                                                        <span className="px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs rounded-full font-medium">₹{internship.stipend.toLocaleString()}/month</span>
-                                                    )}
-                                                </div>
-                                                <p className="text-slate-600 dark:text-slate-300 text-sm mb-4 relative z-10 line-clamp-3">{internship.description}</p>
-                                                <div className="flex flex-wrap gap-2 mb-6 relative z-10">
-                                                    {internship.skills.map((skill, idx) => (
-                                                        <span key={idx} className="px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 text-xs rounded-full font-medium border border-slate-200 dark:border-white/10">
-                                                            {skill}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                <div className="flex justify-between items-center relative z-10">
-                                                    <span className="text-xs text-slate-400 dark:text-slate-500">Posted {formatDistanceToNow(new Date(internship.postedDate), { addSuffix: true })}</span>
-                                                    <button
-                                                        onClick={() => setSelectedInternship(internship)}
-                                                        className="px-5 py-2 bg-radion-primary text-white font-semibold rounded-full hover:bg-radion-primary/90 transition-colors shadow-lg shadow-radion-primary/20"
-                                                    >
-                                                        View Details
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            <InternshipCard
+                                                key={internship.id}
+                                                internship={internship}
+                                                onApply={(job) => setSelectedInternship(job)}
+                                                hasApplied={myApplications.some(app => app.jobId === internship.id)}
+                                            />
                                         ))
                                     ) : (
                                         <div className="text-center py-16 bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5">

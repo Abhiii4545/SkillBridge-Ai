@@ -1,3 +1,8 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { UserProfile } from '../types';
+import ResumeUpload from './ResumeUpload';
+import { FileText, LayoutDashboard, Sparkles, Briefcase, TrendingUp, CheckCircle, CheckCircle2, Target, ArrowRight, UploadCloud, X, ExternalLink, Code2, Brain, Zap, BarChart3, ChevronDown } from 'lucide-react';
+
 interface LandingPageProps {
     isLoggedIn: boolean;
     onLoginStudent: () => void;
@@ -5,32 +10,10 @@ interface LandingPageProps {
     onGoToDashboard: () => void;
     onResumeAnalyzed: (profile: UserProfile) => void;
     onBuildResume: () => void;
-    onUploadResume: () => void; // NEW PROP
+    onUploadResume: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, onLoginRecruiter, onGoToDashboard, onResumeAnalyzed, onBuildResume, onUploadResume }) => {
-    // ... existing code ...
-    // In the return JSX:
-    {
-        isLoggedIn && (
-            <>
-                <button
-                    onClick={onGoToDashboard}
-                    className="btn-bubble bubble-primary px-8 py-4 text-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
-                >
-                    <LayoutDashboard className="w-5 h-5" />
-                    Go to Dashboard
-                </button>
-                <button
-                    onClick={onUploadResume}
-                    className="btn-bubble bubble-secondary px-8 py-4 text-lg flex items-center justify-center gap-2"
-                >
-                    <Briefcase className="w-5 h-5" />
-                    Upload New Resume
-                </button>
-            </>
-        )
-    }
     const [scrollY, setScrollY] = useState(0);
 
     // Ref for the text reveal section
