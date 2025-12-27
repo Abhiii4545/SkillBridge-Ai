@@ -27,8 +27,9 @@ const extractTextFromPdf = async (base64Data: string): Promise<string> => {
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item: any) => item.str).join(' ');
-            fullText += pageText + '\n';
+            // Join with newlines to preserve vertical structure (headers vs content)
+            const pageText = textContent.items.map((item: any) => item.str).join('\n');
+            fullText += pageText + '\n\n';
         }
         return fullText;
     } catch (error) {
@@ -71,30 +72,48 @@ export const analyzeResume = async (base64Data: string, mimeType: string = 'appl
     const resumeText = await extractTextFromPdf(base64Data);
 
     const prompt = `
-  You are an expert career consultant. Analyze the following resume text.
+  You are an expert technical interviewer and career consultant. 
+  Your task is to accurately extract structured data from the provided resume text.
   
-  RESUME CONTENT:
-  ${resumeText.substring(0, 20000)}
+  NOTE: The text is extracted from a PDF and may have broken lines or weird formatting. 
+  Please intelligently reconstruction the context (e.g. merge lines that belong to the same sentence).
 
-  CRITICAL: Return VALID JSON ONLY. No markdown formatting.
+  RESUME TEXT:
+  ${resumeText.substring(0, 25000)}
+
+  INSTRUCTIONS:
+  1. Extract the candidate's **Name** and **Email**.
+  2. Extract the **University** (look for keywords like Institute, College, University).
+  3. Extract a comprehensive list of **Skills**. Look for a "Skills" section, but also infer skills mentioned in Project descriptions or Experience.
+  4. Write a professional **Summary** (3-4 sentences) highlighting their main strength.
+  5. Determine **Experience Level** (e.g., "Student", "Entry Level", "Experienced").
+  6. **Missing Skills Analysis**: 
+     - Compare the candidate's skills against a standard "Full Stack Developer" or "Software Engineer" role in 2024.
+     - Identify exactly 3 critical market-relevant skills they are missing (e.g., Docker, Kubernetes, AWS, GraphQL, TypeScript).
+
+  CRITICAL OUTPUT FORMAT:
+  Return ONLY a valid JSON object. Do not include markdown formatting like \`\`\`json.
   
-  JSON Structure:
   {
     "name": "string",
     "email": "string",
     "university": "string",
-    "skills": ["string"],
-    "missingSkills": ["string"],
+    "skills": ["string", "string"],
+    "missingSkills": ["string", "string", "string"],
     "summary": "string",
     "experienceLevel": "string"
   }
-  
-  Identify 3 missing skills for a generic tech role in Hyderabad.
   `;
 
     const responseText = await callPuterAI(prompt);
-    const cleanText = responseText.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleanText) as UserProfile;
+    const cleanText = responseText.replace(/```json|```/g, '').trim(); // Robust cleanup
+
+    try {
+        return JSON.parse(cleanText) as UserProfile;
+    } catch (e) {
+        console.error("Failed to parse AI response:", responseText);
+        throw new Error("Failed to analyze resume. Please try again.");
+    }
 };
 
 export const matchInternships = async (profile: UserProfile, internships: Internship[]): Promise<Internship[]> => {
