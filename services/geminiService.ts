@@ -69,6 +69,26 @@ const callAI = async (systemPrompt: string, userPrompt: string, retries = 3): Pr
 
 // --- Exported Functions ---
 
+// --- Helper: Robust JSON Extractor ---
+const extractJSON = (text: string): any => {
+    try {
+        // 1. Try direct parse
+        return JSON.parse(text);
+    } catch (e) {
+        // 2. Find first curly brace and last curly brace
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start !== -1 && end !== -1) {
+            try {
+                return JSON.parse(text.substring(start, end + 1));
+            } catch (e2) {
+                console.error("JSON Extraction Failed:", e2);
+            }
+        }
+        throw new Error("No valid JSON found in response");
+    }
+};
+
 export const analyzeResume = async (base64Data: string, mimeType: string = 'application/pdf'): Promise<UserProfile> => {
     const resumeText = await extractTextFromPdf(base64Data);
 
@@ -82,40 +102,38 @@ export const analyzeResume = async (base64Data: string, mimeType: string = 'appl
     const fallbackEmail = emailMatch ? emailMatch[0] : "";
     const fallbackPhone = phoneMatch ? phoneMatch[0] : "";
 
-    const systemPrompt = `You are a fast API. Extract resume data. Return JSON only.`;
+    const systemPrompt = `You are a data extraction API. Return ONLY raw JSON. No markdown. No explanations.`;
     const userPrompt = `
-  RESUME:
-  ${resumeText.substring(0, 15000)}
-
-  INSTRUCTIONS:
-  Extract data accurately. Try to infer missing fields.
-  Example Skills: ["React", "TypeScript", "Node.js"]
-
-  JSON Structure:
-  {
-    "name": "string",
-    "email": "string",
-    "phone": "string",
-    "university": "string",
-    "skills": ["string", "string"],
-    "missingSkills": ["string", "string", "string"],
-    "summary": "Professional summary",
-    "experienceLevel": "Student/Entry/Experienced"
-  }
+  EXTRACT DATA FROM RESUME BELOW.
   
-  Critical: Identify 3 missing skills for a 'Full Stack Developer' role.
+  RETURN JSON OBJECT WITH THESE EXACT KEYS:
+  {
+    "name": "Full Name",
+    "email": "email@example.com",
+    "phone": "Phone Number",
+    "university": "University Name",
+    "skills": ["Skill1", "Skill2"],
+    "summary": "Short professional summary",
+    "experienceLevel": "Student"
+  }
+
+  RESUME TEXT:
+  ${resumeText.substring(0, 10000)}
   `;
 
     const responseText = await callAI(systemPrompt, userPrompt);
-    const cleanText = responseText.replace(/```json|```/g, '').trim();
 
     try {
-        const parsed = JSON.parse(cleanText) as UserProfile;
-        // Merge Regex results for 100% accuracy on contact info
+        const parsed = extractJSON(responseText);
+
         return {
             ...parsed,
-            email: parsed.email || fallbackEmail,
-            // We store phone in summary or custom field if needed, but here we prioritize email accuracy
+            // Force Regex Overrides for critical contact info
+            email: fallbackEmail || parsed.email,
+            phone: fallbackPhone || parsed.phone,
+            // Ensure arrays
+            skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+            missingSkills: Array.isArray(parsed.missingSkills) ? parsed.missingSkills : []
         };
     } catch (e) {
         console.warn("AI Parsing Failed, returning partial data via Regex");
@@ -125,7 +143,7 @@ export const analyzeResume = async (base64Data: string, mimeType: string = 'appl
             university: "",
             skills: [],
             missingSkills: [],
-            summary: "Could not parse resume completely.",
+            summary: "Could not analyze resume. Please fill details manually.",
             experienceLevel: "Entry Level",
             role: "student"
         };

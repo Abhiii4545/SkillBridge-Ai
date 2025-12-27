@@ -5,7 +5,7 @@ import InternshipCard from './InternshipCard';
 import ChatWidget from './ChatWidget';
 import ResumeBuilder from './ResumeBuilder';
 import { Loader2, User, Award, TrendingUp, RefreshCw, Sparkles, MapPin, Building2, ArrowRight, Search, Filter, Briefcase, FileText, Target, Calendar, CheckSquare, BarChart2, ChevronDown, ChevronUp, Briefcase as ProjectIcon, UserCircle, AlertTriangle, Clock, XCircle, CheckCircle2, UploadCloud, X } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 
 interface DashboardProps {
     userProfile: UserProfile;
@@ -321,28 +321,27 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
 
                             {/* Chart */}
                             <div className="bg-white dark:bg-[#101025] p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-white/5 relative overflow-hidden group hover:border-indigo-500/30 transition-colors duration-500">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[50px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-500"></div>
                                 <h3 className="font-bold text-slate-900 dark:text-white mb-2 relative z-10 flex items-center gap-2">
                                     <Sparkles className="w-4 h-4 text-indigo-500" />
-                                    Skill Constellation
+                                    Skill Confidence
                                 </h3>
                                 <div className="h-64 w-full relative z-10" style={{ minHeight: '250px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={skillData}>
-                                            <PolarGrid stroke="#334155" strokeOpacity={0.2} />
-                                            <PolarAngleAxis
-                                                dataKey="name"
-                                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
-                                            />
-                                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                            <Radar
-                                                name="Confidence"
+                                        <PieChart>
+                                            <Pie
+                                                data={skillData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
                                                 dataKey="value"
-                                                stroke="#8b5cf6"
-                                                strokeWidth={3}
-                                                fill="#8b5cf6"
-                                                fillOpacity={0.3}
-                                            />
+                                                stroke="none"
+                                            >
+                                                {skillData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={['#6366f1', '#a855f7', '#ec4899', '#3b82f6'][index % 4]} />
+                                                ))}
+                                            </Pie>
                                             <Tooltip
                                                 cursor={false}
                                                 contentStyle={{
@@ -352,10 +351,23 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                                                     backgroundColor: '#0f172a',
                                                     color: '#f8fafc'
                                                 }}
-                                                itemStyle={{ color: '#a78bfa' }}
+                                                itemStyle={{ color: '#e2e8f0' }}
                                             />
-                                        </RadarChart>
+                                            <Legend
+                                                verticalAlign="bottom"
+                                                height={36}
+                                                iconType="circle"
+                                                formatter={(value) => <span className="text-slate-500 dark:text-slate-400 text-xs font-medium ml-1">{value}</span>}
+                                            />
+                                        </PieChart>
                                     </ResponsiveContainer>
+                                    {/* Center Text Overlay */}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
+                                        <div className="text-center">
+                                            <span className="text-3xl font-bold text-slate-800 dark:text-white">{skillData.length}</span>
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-widest">Skills</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
