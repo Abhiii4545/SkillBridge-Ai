@@ -1,52 +1,55 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Internship, UserProfile, LearningRoadmap, ResumeData } from "../types";
 
-// Setup Puter
-const MODEL_NAME = 'google/gemini-2.0-flash-001';
+// Setup Google GenAI
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+if (!API_KEY) {
+  console.error("Missing VITE_GEMINI_API_KEY in environment variables");
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY);
+const MODEL_NAME = 'gemini-1.5-flash'; // Standard model
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const generateContentWithRetry = async (prompt: string, attachment?: string, retries = 3, initialDelay = 1000): Promise<string> => {
+const generateContentWithRetry = async (prompt: string, attachmentParts?: any[], retries = 3, initialDelay = 1000): Promise<string> => {
   let attempt = 0;
   while (attempt < retries) {
     try {
-      // Puter.js chat signature: puter.ai.chat(message, optionOrAttachment, option)
-      // If attachment is present: puter.ai.chat(message, attachment, { model: ... })
-      // If no attachment: puter.ai.chat(message, { model: ... })
-
-      let response;
-      if (attachment) {
-        response = await puter.ai.chat(prompt, attachment, { model: MODEL_NAME });
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      let result;
+      if (attachmentParts) {
+        result = await model.generateContent([prompt, ...attachmentParts]);
       } else {
-        response = await puter.ai.chat(prompt, { model: MODEL_NAME });
+        result = await model.generateContent(prompt);
       }
-
-      // Puter returns the response string directly (or an object if full response requested, but usually string in simple usage)
-      // Based on docs: .then(response => puter.print(response)) implies it returns the text.
-      // Let's assume response is a string.
-
-      if (typeof response === 'object' && response?.message?.content) {
-        return response.message.content;
-      } else if (typeof response === 'object' && response?.text) {
-        return response.text;
-      }
-
-      return response as string;
+      const response = await result.response;
+      return response.text();
 
     } catch (error: any) {
-      if (error?.status === 429 || error?.code === 429 || error?.message?.includes('429') || error?.message?.includes('Quota exceeded')) {
+      if (error?.status === 429 || error?.toString().includes('429') || error?.toString().includes('Quota exceeded')) {
         attempt++;
         if (attempt >= retries) throw error;
         const waitTime = initialDelay * Math.pow(2, attempt - 1);
         console.warn(`Rate limit hit. Retrying in ${waitTime}ms... (Attempt ${attempt}/${retries})`);
         await delay(waitTime);
       } else {
-        console.error("Puter AI Error:", error);
+        console.error("Gemini API Error:", error);
         throw error;
       }
     }
   }
   throw new Error("Failed to generate content after retries");
 };
+
+function fileToGenerativePart(base64Data: string, mimeType: string) {
+  return {
+    inlineData: {
+      data: base64Data,
+      mimeType
+    },
+  };
+}
 
 export const analyzeResume = async (base64Data: string, mimeType: string = 'application/pdf'): Promise<UserProfile> => {
   try {
@@ -76,10 +79,8 @@ export const analyzeResume = async (base64Data: string, mimeType: string = 'appl
       }
     `;
 
-    // Construct Data URI
-    const dataUri = `data:${mimeType};base64,${base64Data}`;
-
-    const text = await generateContentWithRetry(prompt, dataUri);
+    const attachmentPart = fileToGenerativePart(base64Data, mimeType);
+    const text = await generateContentWithRetry(prompt, [attachmentPart]);
     const cleanText = text.replace(/```json|```/g, '').trim();
     return JSON.parse(cleanText) as UserProfile;
   } catch (error) {
@@ -163,27 +164,20 @@ export const generateCareerPath = async (profile: UserProfile, targetRole: strin
 };
 
 export const getChatResponse = async (history: { role: string, parts: { text: string }[] }[], message: string): Promise<string> => {
-  // Adapt history format for Puter if needed, but basic chat can just be the message + context.
-  // Puter doesn't explicitly document a history object in the simple chat() example.
-  // However, we can construct a prompt with history or just send the new message if we want to keep it simple.
-  // For better context, let's append history to the prompt text.
+  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const chat = model.startChat({
+    history: history,
+  });
 
-  const historyText = history.map(h => `${h.role}: ${h.parts[0].text}`).join('\n');
-  const fullPrompt = `
-     System: You are AstraX, a helpful, encouraging career mentor for a B.Tech student. Keep answers concise, actionable, and encouraging. Focus on tech careers, internships, and skill building. ALWAYS SPEAK IN ENGLISH.
-     
-     Conversation History:
-     ${historyText}
-     
-     User: ${message}
-     Model:
-   `;
-
-  // Using the retry wrapper
-  return await generateContentWithRetry(fullPrompt);
+  try {
+    const result = await chat.sendMessage(message);
+    return result.response.text();
+  } catch (e) {
+    console.error("Chat error", e);
+    return "I'm having trouble connecting right now. Please try again.";
+  }
 };
 
-// --- New Resume Generation Service ---
 export const generateATSResume = async (currentData: Partial<ResumeData>): Promise<ResumeData> => {
   const prompt = `
       Act as an expert ATS Resume Writer. I will provide raw data about a candidate.
