@@ -52,7 +52,7 @@ export const getUserProfile = async (email: string): Promise<any | null> => {
 
 // --- Internship Persistence (Global Visibility) ---
 // --- Internship Persistence (Global Visibility) ---
-import { collection, addDoc, getDocs, query, orderBy, onSnapshot, where, updateDoc, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot, where, updateDoc, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 
 export const addInternshipToFirestore = async (internship: any) => {
   if (!db) return;
@@ -164,14 +164,26 @@ export const submitApplicationToFirestore = async (application: any) => {
   await addDoc(collection(db, "applications"), application);
 };
 
-// 7. Subscribe to Job Applications (Recruiter View)
-export const subscribeToJobApplications = (jobId: string, callback: (apps: any[]) => void) => {
+// 7. Subscribe to Job Applications (Recruiter View) - ALL apps for now (MVP) or filter by company
+export const subscribeToRecruiterApplications = (companyName: string, callback: (apps: any[]) => void) => {
   if (!db) return () => { };
-  const q = query(collection(db, "applications"), where("jobId", "==", jobId));
+  // Querying all applications where companyName matches
+  const q = query(collection(db, "applications"), where("companyName", "==", companyName));
   return onSnapshot(q, (snapshot) => {
     const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(apps);
   });
+};
+
+export const deleteInternshipFromFirestore = async (internshipId: string) => {
+  if (!db) return;
+  try {
+    await deleteDoc(doc(db, "internships", internshipId));
+    console.log("Internship deleted:", internshipId);
+  } catch (e) {
+    console.error("Error deleting internship:", e);
+    throw e;
+  }
 };
 
 export { auth, googleProvider, appleProvider, db };

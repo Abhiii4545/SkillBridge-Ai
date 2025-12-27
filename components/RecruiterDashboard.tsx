@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, Internship, Application } from '../types';
-import { addInternshipToFirestore, updateApplicationStatusWithNotification } from '../services/firebase';
-import { Plus, Users, Search, MessageSquare, Briefcase, X, Check, Building2, Globe, Layout, LogOut, ArrowRight, Settings, ChevronRight, ChevronDown, Mail, Phone, Calendar, GraduationCap, MapPin, Download, Sparkles, XCircle, CheckCircle2 } from 'lucide-react';
+import { addInternshipToFirestore, updateApplicationStatusWithNotification, deleteInternshipFromFirestore } from '../services/firebase';
+import { Plus, Users, Search, MessageSquare, Briefcase, X, Check, Building2, Globe, Layout, LogOut, ArrowRight, Settings, ChevronRight, ChevronDown, Mail, Phone, Calendar, GraduationCap, MapPin, Download, Sparkles, XCircle, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface RecruiterDashboardProps {
     userProfile: UserProfile;
@@ -158,6 +158,21 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
     const handleViewApplicants = (jobId: string, jobTitle: string) => {
         setViewingApplicantsFor(jobTitle);
         setViewingApplicantsJobId(jobId);
+    };
+
+    const handleDeleteJob = async (jobId: string) => {
+        if (window.confirm("Are you sure you want to delete this internship? This cannot be undone.")) {
+            try {
+                await deleteInternshipFromFirestore(jobId);
+                const updatedList = allInternships.filter(j => j.id !== jobId);
+                onUpdateInternships(updatedList);
+                setSaveMessage('Internship deleted successfully');
+                setTimeout(() => setSaveMessage(''), 3000);
+            } catch (e) {
+                console.error(e);
+                alert("Failed to delete internship");
+            }
+        }
     };
 
     const handleStatusUpdate = async (appId: string, newStatus: Application['status']) => {
@@ -399,7 +414,14 @@ This candidate applied before the resume upload feature was mandatory.
                                                     <span>{job.applicants} Applicants</span>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-3 w-full md:w-auto">
+                                            <div className="flex gap-2 w-full md:w-auto">
+                                                <button
+                                                    onClick={() => handleDeleteJob(job.id)}
+                                                    className="p-2 border border-red-200 dark:border-red-900/50 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                    title="Delete Job"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                                 <button
                                                     onClick={() => openEditModal(job)}
                                                     className="flex-1 md:flex-none px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-full text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"

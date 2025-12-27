@@ -8,7 +8,8 @@ import StudentOnboarding from './components/StudentOnboarding';
 import ResumeUploadPage from './components/ResumeUploadPage';
 import { ViewState, UserProfile, Application, Internship } from './types';
 import { MOCK_INTERNSHIPS } from './constants';
-import { saveUserProfile, getUserProfile, getInternshipsFromFirestore, subscribeToNotifications } from './services/firebase'; // Persistence
+import { saveUserProfile, getUserProfile, getInternshipsFromFirestore, subscribeToNotifications, submitApplicationToFirestore, subscribeToRecruiterApplications, auth } from './services/firebase'; // Persistence
+import { onAuthStateChanged } from 'firebase/auth';
 
 const App: React.FC = () => {
     // START STRICT: Default to 'login' instead of 'landing'
@@ -49,65 +50,73 @@ const App: React.FC = () => {
         }
     }, [darkMode]);
 
-    // Load Internships (Global Visibility)
+    // Load Internships (Firestore ONLY)
     useEffect(() => {
         const loadInternships = async () => {
             try {
-                // 1. Try fetching from Firestore (Source of Truth)
                 const cloudInternships = await getInternshipsFromFirestore();
                 if (cloudInternships && cloudInternships.length > 0) {
                     setInternships(cloudInternships);
-                    // Update local cache
-                    localStorage.setItem('skillbridge_internships', JSON.stringify(cloudInternships));
-                } else {
-                    // 2. Fallback to LocalStorage
-                    const storedInternships = localStorage.getItem('skillbridge_internships');
-                    if (storedInternships) {
-                        const parsed = JSON.parse(storedInternships);
-                        setInternships(parsed.length > 0 ? parsed : MOCK_INTERNSHIPS);
-                    } else {
-                        setInternships(MOCK_INTERNSHIPS);
-                    }
                 }
             } catch (e) {
-                console.error("Failed to load internships:", e);
-                // Fallback
-                setInternships(MOCK_INTERNSHIPS);
+                console.error("Failed to load internships from Cloud:", e);
+                // No local storage fallback as requested
             }
         };
         loadInternships();
     }, []);
 
-    // 5. REAL-TIME APPLICATIONS LISTENER (Student)
+
+
+    // 5. REAL-TIME APPLICATIONS LISTENER
     useEffect(() => {
-        if (userProfile && userProfile.email && userProfile.role === 'student') {
-            // Import dynamically to avoid circular dependencies if any (though firebase.ts is fine)
-            import('./services/firebase').then(({ subscribeToStudentApplications }) => {
-                const unsubscribe = subscribeToStudentApplications(userProfile.email, (apps) => {
-                    setApplications(apps);
-                    // Update local cache
-                    localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
-                });
+        if (userProfile && userProfile.email) {
+            import('./services/firebase').then(({ subscribeToStudentApplications, subscribeToRecruiterApplications }) => {
+                let unsubscribe = () => { };
+
+                if (userProfile.role === 'student') {
+                    unsubscribe = subscribeToStudentApplications(userProfile.email, (apps) => {
+                        setApplications(apps);
+                        localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
+                    });
+                } else if (userProfile.role === 'recruiter') {
+                    // Filter by company name
+                    const company = userProfile.companyName || userProfile.name || "";
+                    if (company) {
+                        unsubscribe = subscribeToRecruiterApplications(company, (apps) => {
+                            setApplications(apps);
+                            localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
+                        });
+                    }
+                }
+
                 return () => unsubscribe();
             });
         }
     }, [userProfile]);
 
-    // Check for active session
+
+
+    // Check for active session (Firebase Auth)
     useEffect(() => {
-        const storedUser = localStorage.getItem('skillbridge_current_user');
-        if (storedUser) {
-            try {
-                const profile = JSON.parse(storedUser);
-                setUserProfile(profile);
-                // REMOVED AUTO-REDIRECT: User stays on Landing Page even if logged in
-            } catch (e) {
-                console.error("Session restore failed", e);
-                localStorage.removeItem('skillbridge_current_user');
-                // setCurrentView('login'); // No need, default is landing
-            }
+        if (auth) {
+            const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                if (user && user.email) {
+                    console.log("Restoring session for:", user.email);
+                    // Fetch extended profile from Firestore
+                    try {
+                        const profile = await getUserProfile(user.email);
+                        if (profile) {
+                            setUserProfile(profile);
+                        }
+                    } catch (e) { console.error("Profile restore error", e); }
+                } else {
+                    setUserProfile(null);
+                }
+            });
+            return () => unsubscribe();
         }
-    }, []); // Run once on mount
+    }, []);
 
     // 4. REAL-TIME NOTIFICATIONS LISTENER
     useEffect(() => {
@@ -199,6 +208,9 @@ const App: React.FC = () => {
         const updatedApps = [...applications, newApplication];
         setApplications(updatedApps);
         localStorage.setItem('skillbridge_applications', JSON.stringify(updatedApps));
+
+        // SAVE TO FIREBASE
+        submitApplicationToFirestore(newApplication).catch(console.error);
     };
 
     const handleUpdateInternships = (newInternships: Internship[]) => {
