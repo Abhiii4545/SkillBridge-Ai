@@ -5,6 +5,7 @@ import { FileText, LayoutDashboard, Sparkles, Briefcase, TrendingUp, CheckCircle
 
 interface LandingPageProps {
     isLoggedIn: boolean;
+    userRole?: 'student' | 'recruiter';
     onLoginStudent: () => void;
     onLoginRecruiter: () => void;
     onGoToDashboard: () => void;
@@ -13,7 +14,7 @@ interface LandingPageProps {
     onUploadResume: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, onLoginRecruiter, onGoToDashboard, onResumeAnalyzed, onBuildResume, onUploadResume }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLoginStudent, onLoginRecruiter, onGoToDashboard, onResumeAnalyzed, onBuildResume, onUploadResume }) => {
     const [scrollY, setScrollY] = useState(0);
 
     // Ref for the text reveal section
@@ -193,10 +194,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                                                 <LayoutDashboard className="w-5 h-5" />
                                                 Go to Dashboard
                                             </button>
-                                            <button onClick={onUploadResume} className="btn-bubble bubble-primary px-8 py-4 text-lg flex items-center gap-2">
-                                                <UploadCloud className="w-5 h-5" />
-                                                Upload Resume
-                                            </button>
+
+                                            {userRole !== 'recruiter' && (
+                                                <button onClick={onUploadResume} className="btn-bubble bubble-primary px-8 py-4 text-lg flex items-center gap-2">
+                                                    <UploadCloud className="w-5 h-5" />
+                                                    Upload Resume
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (

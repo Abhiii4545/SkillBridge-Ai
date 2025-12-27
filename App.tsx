@@ -254,6 +254,7 @@ const App: React.FC = () => {
                 {currentView === 'landing' && (
                     <LandingPage
                         isLoggedIn={!!userProfile}
+                        userRole={userProfile?.role}
                         onLoginStudent={() => navigateToLogin('student')}
                         onLoginRecruiter={() => navigateToLogin('recruiter')}
                         onGoToDashboard={() => setCurrentView(userProfile?.role === 'recruiter' ? 'recruiter-dashboard' : 'student-dashboard')}

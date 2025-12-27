@@ -85,7 +85,12 @@ export const getInternshipsFromFirestore = async (): Promise<any[]> => {
 
 // 1. Subscribe to Notifications (Live Bell Icon)
 export const subscribeToNotifications = (email: string, callback: (notifs: any[]) => void) => {
-  if (!db || !email) return () => { };
+  if (!db || !email) {
+    console.warn("Skipping notification subscription: No DB or Email", { email });
+    return () => { };
+  }
+
+  console.log("Subscribing to notifications for:", email);
 
   const q = query(
     collection(db, "notifications"),
@@ -102,6 +107,7 @@ export const subscribeToNotifications = (email: string, callback: (notifs: any[]
 // 2. Send Notification (Recruiter Action -> Student Alert)
 export const sendNotification = async (recipientEmail: string, message: string, type: 'status' | 'view' | 'job') => {
   if (!db) return;
+  console.log("Sending notification to:", recipientEmail, "Message:", message);
   try {
     await addDoc(collection(db, "notifications"), {
       recipientEmail,

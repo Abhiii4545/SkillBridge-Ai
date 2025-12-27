@@ -140,7 +140,15 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="radion-glass rounded-[2rem] p-10 animate-slide-up shadow-2xl">
+        <div className="radion-glass rounded-[2rem] p-10 animate-slide-up shadow-2xl relative">
+          <button
+            onClick={onBack}
+            className="absolute top-6 left-6 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="Go Back"
+          >
+            <ArrowRight className="w-5 h-5 rotate-180" />
+          </button>
+
           <div className="text-center mb-10">
             <h2 className="text-4xl font-extrabold text-white tracking-tight mb-2">Welcome Back</h2>
             <p className="text-slate-400">Access your intelligent career brain</p>
