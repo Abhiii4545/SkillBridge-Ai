@@ -11,7 +11,7 @@ import { MOCK_INTERNSHIPS } from './constants';
 
 const App: React.FC = () => {
     // START STRICT: Default to 'login' instead of 'landing'
-    const [currentView, setCurrentView] = useState<ViewState>('login');
+    const [currentView, setCurrentView] = useState<ViewState>('landing');
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loginRole, setLoginRole] = useState<'student' | 'recruiter'>('student');
     const [applications, setApplications] = useState<Application[]>([]);
@@ -52,27 +52,11 @@ const App: React.FC = () => {
             try {
                 const profile = JSON.parse(storedUser);
                 setUserProfile(profile);
-
-                if (profile.role === 'recruiter') {
-                    setCurrentView('recruiter-dashboard');
-                } else {
-                    // STUDENT LOGIC:
-                    // If no name -> Onboarding (weird case)
-                    // If name but NO skills/university -> Resume Upload (New User)
-                    // If name AND skills -> Dashboard
-                    // Note: Google login gives Name + Email but empty skills.
-                    if (!profile.skills || profile.skills.length === 0) {
-                        setCurrentView('resume-upload');
-                    } else if (!profile.name || profile.name.trim() === '') {
-                        setCurrentView('student-onboarding'); // Fallback logic
-                    } else {
-                        setCurrentView('student-dashboard');
-                    }
-                }
+                // REMOVED AUTO-REDIRECT: User stays on Landing Page even if logged in
             } catch (e) {
                 console.error("Session restore failed", e);
                 localStorage.removeItem('skillbridge_current_user');
-                setCurrentView('login');
+                // setCurrentView('login'); // No need, default is landing
             }
         }
     }, []); // Run once on mount

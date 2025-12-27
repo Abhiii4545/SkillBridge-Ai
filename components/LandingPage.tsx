@@ -45,8 +45,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
-                    entry.target.classList.add('opacity-100', 'translate-y-0');
-                    entry.target.classList.remove('opacity-0', 'translate-y-10');
+                    entry.target.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+                    entry.target.classList.remove('opacity-0', 'translate-y-10', 'scale-95');
                 }
             });
         }, { threshold: 0.1 });
@@ -70,7 +70,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
     const colleges = ['IIT Hyderabad', 'IIIT Hyderabad', 'BITS Pilani', 'JNTU', 'Osmania University', 'CBIT', 'VNR VJIET', 'Vasavi College', 'GRIET', 'MGIT', 'KL University', 'Mahindra University'];
 
     return (
-        <div className="flex flex-col w-full overflow-hidden bg-radion-bg text-slate-100 font-sans selection:bg-radion-primary selection:text-white">
+        <div className="flex flex-col w-full overflow-hidden bg-gradient-to-br from-slate-950 via-[#0b0c15] to-slate-900 text-slate-100 font-sans selection:bg-radion-primary selection:text-white relative">
+
+            {/* New Mesh Gradient / Aurora Effect */}
+            <div className="absolute top-0 left-0 w-full h-[100vh] overflow-hidden pointer-events-none z-0 opactiy-60">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse-slow"></div>
+                <div className="absolute top-[20%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/20 rounded-full blur-[120px] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+                <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
+            </div>
 
             {/* --- SECTION 1: HERO --- */}
             <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 px-4 text-center overflow-hidden pb-20">
@@ -137,8 +144,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
 
                     {/* Replaced Hero Visual with Upload Section */}
                     <div id="upload-section" className="w-full max-w-4xl animate-slide-up opacity-0" style={{ animationDelay: '0.5s' }}>
-                        <div className="relative rounded-[2.5rem] overflow-hidden border border-neutral-800 bg-neutral-900/50 shadow-2xl p-8 sm:p-12 backdrop-blur-sm">
-                            <div className="absolute inset-0 bg-gradient-to-b from-blue-900/5 to-transparent pointer-events-none"></div>
+                        <div className="relative rounded-[2.5rem] overflow-hidden border border-neutral-800 bg-neutral-900/50 shadow-2xl p-8 sm:p-12 backdrop-blur-sm hover:border-radion-primary/30 transition-colors duration-500 group">
+                            <div className="absolute inset-0 bg-gradient-to-b from-blue-900/5 to-transparent pointer-events-none group-hover:from-blue-900/10 transition-colors duration-500"></div>
 
                             <div className="relative z-10">
                                 <div className="mb-6 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-radion-primary/20 text-radion-secondary text-xs font-bold uppercase tracking-wide border border-radion-primary/30 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
@@ -186,7 +193,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section>
 
             {/* --- SECTION 2: TRUSTED BY (SCROLL) --- */}
-            <section className="py-16 border-y border-white/5 bg-radion-bg overflow-hidden relative z-10 select-none">
+            <section className="py-16 border-y border-white/5 bg-transparent overflow-hidden relative z-10 select-none">
                 <div className="flex w-full">
                     {/* First Marquee Track */}
                     <div className="flex flex-shrink-0 animate-scroll items-center gap-24 pr-24">
@@ -208,10 +215,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section>
 
             {/* --- SECTION 3: THE PROBLEM --- */}
-            <section id="problem" className="py-32 px-6 bg-radion-bg relative overflow-hidden">
+            <section id="problem" className="py-32 px-6 bg-transparent relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-radion-primary/5 to-transparent pointer-events-none"></div>
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                    <div className="animate-on-scroll opacity-0 translate-y-10 transition-all duration-700">
+                    <div className="animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
                         <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
                             Why 90% of B.Tech students <span className="text-red-500">get rejected.</span>
                         </h2>
@@ -233,7 +240,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                             </li>
                         </ul>
                     </div>
-                    <div ref={textRevealRef} className="radion-card p-8 rounded-3xl border border-[#2c2c2e] animate-on-scroll opacity-0 translate-y-10 transition-all duration-700 delay-200">
+                    <div ref={textRevealRef} className="radion-card p-8 rounded-3xl border border-[#2c2c2e] animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-200">
                         <p className="text-3xl font-bold leading-tight">
                             <span className="text-reveal-span" style={{ color: revealProgress > 0.1 ? '#fff' : '#333' }}>AstraX changes the game. </span>
                             <span className="text-reveal-span" style={{ color: revealProgress > 0.3 ? '#fff' : '#333' }}>We use Gemini AI to </span>
@@ -247,11 +254,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section>
 
             {/* --- SECTION 4: RANKFLOW INTEGRATION --- */}
-            <section id="rankflow" className="py-24 px-6 bg-radion-bg border-y border-white/5 relative overflow-hidden">
+            <section id="rankflow" className="py-24 px-6 bg-transparent border-y border-white/5 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-radion-accent/20 blur-[150px] rounded-full pointer-events-none mix-blend-screen"></div>
 
                 <div className="max-w-4xl mx-auto relative z-10 text-center">
-                    <div className="animate-on-scroll opacity-0 translate-y-10 transition-all duration-700">
+                    <div className="animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
                         <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-radion-accent/30 bg-radion-accent/10">
                             <Sparkles className="w-3 h-3 text-radion-accent" />
                             <span className="text-xs font-bold text-radion-accent uppercase tracking-wide">Exclusive Partner</span>
@@ -288,7 +295,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section>
 
             {/* --- SECTION 5: HOW IT WORKS --- */}
-            <section className="py-32 px-6 bg-radion-bg relative">
+            <section className="py-32 px-6 bg-transparent relative">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-150"></div>
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-20">
@@ -298,7 +305,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                         {/* Step 1 */}
-                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-primary/50 transition-colors animate-on-scroll opacity-0 translate-y-10 transition-all duration-700">
+                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-primary/50 transition-colors animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-radion-primary rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-radion-primary/50">1</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <LayoutDashboard className="w-16 h-16 text-radion-primary/50 group-hover:text-radion-primary transition-colors" />
@@ -308,7 +315,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                         </div>
 
                         {/* Step 2 */}
-                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-accent/50 transition-colors animate-on-scroll opacity-0 translate-y-10 transition-all duration-700 delay-100">
+                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-accent/50 transition-colors animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-100">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-radion-accent rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-radion-accent/50">2</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <Code2 className="w-16 h-16 text-radion-accent/50 group-hover:text-radion-accent transition-colors" />
@@ -318,7 +325,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                         </div>
 
                         {/* Step 3 */}
-                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-green-500/50 transition-colors animate-on-scroll opacity-0 translate-y-10 transition-all duration-700 delay-200">
+                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-green-500/50 transition-colors animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-200">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-green-900/50">3</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <Briefcase className="w-16 h-16 text-green-500/50 group-hover:text-green-500 transition-colors" />
@@ -331,16 +338,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section>
 
             {/* --- SECTION 6: BENTO FEATURES --- */}
-            <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-radion-bg">
+            <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-transparent">
                 <div className="max-w-7xl mx-auto">
-                    <h2 className="text-4xl md:text-5xl font-semibold text-center mb-16 tracking-tight text-white animate-on-scroll opacity-0 translate-y-10 transition-all duration-700">
+                    <h2 className="text-4xl md:text-5xl font-semibold text-center mb-16 tracking-tight text-white animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
                         CareerOS Features.
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-[350px]">
 
                         {/* Feature 1: Large - Deep Analysis */}
-                        <div className="md:col-span-4 relative overflow-hidden rounded-[2rem] radion-card group animate-on-scroll opacity-0 translate-y-10 transition-all duration-700 hover:border-radion-primary/50 hover:scale-[1.01] hover:shadow-[0_0_40px_rgba(79,70,229,0.15)]">
+                        <div className="md:col-span-4 relative overflow-hidden rounded-[2rem] radion-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 hover:border-radion-primary/50 hover:scale-[1.01] hover:shadow-[0_0_40px_rgba(79,70,229,0.15)]">
                             <div className="absolute inset-0 bg-gradient-to-br from-radion-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                             <div className="p-10 h-full flex flex-col justify-between relative z-10">
                                 <div>
@@ -360,7 +367,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                         </div>
 
                         {/* Feature 2: Small - Instant Match */}
-                        <div className="md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 transition-all duration-700 delay-100 hover:border-radion-secondary/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                        <div className="md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-100 hover:border-radion-secondary/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]">
                             <div className="p-8 h-full flex flex-col">
                                 <Zap className="w-10 h-10 text-yellow-400 mb-4 fill-yellow-400/20 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300" />
                                 <h3 className="text-2xl font-bold mb-2">Instant Match</h3>
@@ -375,7 +382,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                         </div>
 
                         {/* Feature 3: Small - Skill Gaps */}
-                        <div className="md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 transition-all duration-700 delay-200 hover:border-radion-accent/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]">
+                        <div className="md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-200 hover:border-radion-accent/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]">
                             <div className="p-8 h-full flex flex-col">
                                 <BarChart3 className="w-10 h-10 text-radion-accent mb-4 group-hover:-translate-y-1 transition-transform duration-300" />
                                 <h3 className="text-2xl font-bold mb-2">Skill Gaps</h3>
@@ -392,7 +399,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                         </div>
 
                         {/* Feature 4: Large - Privacy */}
-                        <div className="md:col-span-4 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 transition-all duration-700 delay-300 hover:border-green-500/50 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(34,197,94,0.15)]">
+                        <div className="md:col-span-4 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-300 hover:border-green-500/50 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(34,197,94,0.15)]">
                             <div className="p-10 h-full flex items-center">
                                 <div className="flex-1">
                                     <Lock className="w-12 h-12 text-green-500 mb-6 group-hover:scale-110 group-hover:rotate-[15deg] transition-all duration-300" />
@@ -412,12 +419,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section>
 
             {/* --- SECTION 7: LIVE DASHBOARD PREVIEW --- */}
-            <section className="py-24 px-6 bg-radion-bg">
+            <section className="py-24 px-6 bg-transparent">
                 <div className="max-w-6xl mx-auto text-center">
                     <h2 className="text-3xl font-bold mb-4">Your Command Center</h2>
                     <p className="text-gray-400 mb-12">Everything you need to manage your job search in one place.</p>
 
-                    <div className="relative rounded-xl overflow-hidden shadow-2xl border border-white/10 group animate-on-scroll opacity-0 translate-y-10 transition-all duration-700">
+                    <div className="relative rounded-xl overflow-hidden shadow-2xl border border-white/10 group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10 opacity-60"></div>
                         <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2600" alt="Dashboard Interface" className="w-full opacity-80 group-hover:scale-105 transition-transform duration-700" />
                         <div className="absolute bottom-10 left-0 w-full text-center z-20">
@@ -430,7 +437,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section>
 
             {/* --- SECTION 8: TESTIMONIALS --- */}
-            <section id="testimonials" className="py-24 px-6 bg-radion-bg border-t border-white/5">
+            <section id="testimonials" className="py-24 px-6 bg-transparent border-t border-white/5">
                 <div className="max-w-7xl mx-auto">
                     <h2 className="text-4xl font-bold text-center mb-16">Students <span className="text-radion-primary">Love Us</span></h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -439,7 +446,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
                             { name: "Sneha P.", college: "CBIT", role: "Data Analyst at Deloitte", text: "The Rankflow integration is a game changer. Being able to prove my SQL skills with a verified badge made recruiters actually reply to me." },
                             { name: "Arjun K.", college: "JNTU", role: "Frontend at Darwinbox", text: "I didn't know what to learn next. The roadmap feature told me to focus on Redux. I did, and it was the main topic in my interview." }
                         ].map((t, i) => (
-                            <div key={i} className="radion-card p-8 rounded-2xl border border-[#2c2c2e] hover:border-radion-primary/30 transition-colors animate-on-scroll opacity-0 translate-y-10 transition-all duration-700" style={{ transitionDelay: `${i * 100}ms` }}>
+                            <div key={i} className="radion-card p-8 rounded-2xl border border-[#2c2c2e] hover:border-radion-primary/30 transition-colors animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700" style={{ transitionDelay: `${i * 100}ms` }}>
                                 <div className="flex gap-1 mb-4">
                                     {[1, 2, 3, 4, 5].map(s => <Sparkles key={s} className="w-4 h-4 text-yellow-500 fill-yellow-500" />)}
                                 </div>
@@ -458,8 +465,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section >
 
             {/* --- SECTION 10: FAQ --- */}
-            < section className="py-24 text-center bg-radion-bg border-t border-white/5" >
-                <div className="max-w-3xl mx-auto px-6 animate-on-scroll opacity-0 translate-y-10 transition-all duration-700">
+            < section className="py-24 text-center bg-transparent border-t border-white/5" >
+                <div className="max-w-3xl mx-auto px-6 animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
                     <h3 className="text-3xl font-bold mb-12 text-white">Questions?</h3>
 
                     <div className="space-y-4 text-left">
@@ -491,7 +498,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onLoginStudent, o
             </section >
 
             {/* --- FOOTER --- */}
-            < footer className="py-12 bg-radion-bg text-center text-slate-500 text-sm border-t border-white/5 relative z-10" >
+            < footer className="py-12 bg-transparent text-center text-slate-500 text-sm border-t border-white/5 relative z-10" >
                 <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
                     <div className="flex items-center gap-2 mb-4 md:mb-0">
                         <img src="/logo.png" alt="AstraX Logo" className="w-8 h-8 rounded-full opacity-80" />
