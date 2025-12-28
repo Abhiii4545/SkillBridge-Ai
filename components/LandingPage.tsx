@@ -21,80 +21,118 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLoginStudent, onLoginRecruiter, onGoToDashboard, onResumeAnalyzed, onBuildResume, onUploadResume }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Initial GSAP Setup
+    // Initial GSAP Setup with Premium Motion Profile
     React.useLayoutEffect(() => {
         const ctx = gsap.context(() => {
-            // --- HEADER / HERO ANIMATIONS ---
-            const tl = gsap.timeline();
 
-            tl.fromTo(".hero-badge",
-                { y: -20, opacity: 0 },
-                { y: 0, opacity: 1, duration: 1, ease: "power3.out" }
-            )
-                .fromTo(".hero-title",
-                    { y: 60, opacity: 0 },
-                    { y: 0, opacity: 1, duration: 1.2, ease: "power4.out", stagger: 0.2 }, "-=0.5"
-                )
-                .fromTo(".hero-sub",
-                    { y: 30, opacity: 0 },
-                    { y: 0, opacity: 1, duration: 1, ease: "power3.out" }, "-=0.8"
-                )
-                .fromTo(".hero-btns",
-                    { y: 20, opacity: 0 },
-                    { y: 0, opacity: 1, duration: 1, ease: "back.out(1.7)" }, "-=0.6"
-                )
-                .fromTo(".upload-card",
-                    { y: 100, opacity: 0, scale: 0.95 },
-                    { y: 0, opacity: 1, scale: 1, duration: 1.2, ease: "expo.out" }, "-=0.8"
-                );
+            // --- GLOBAL CONFIG ---
+            // "Motion must feel intelligent, weightless, and cinematic"
+            const GOLDEN_EASE = "power4.out";
+            const SLOW_EASE = "expo.out";
 
-            // Parallax Background
+            // --- HERO SECTION ---
+            // "Background moves at 0.4x speed for parallax"
             gsap.to(".hero-bg-mesh", {
-                yPercent: 30,
+                yPercent: 50,
                 ease: "none",
                 scrollTrigger: {
                     trigger: ".hero-section",
                     start: "top top",
                     end: "bottom top",
-                    scrub: true
+                    scrub: 1 // Smoothing for weightless feel
                 }
             });
 
+            const heroTl = gsap.timeline({ defaults: { ease: GOLDEN_EASE, duration: 1.4 } });
+
+            // "Hero text rises from depth with blur → sharp"
+            heroTl.fromTo(".hero-badge",
+                { y: 20, opacity: 0, scale: 0.9, filter: "blur(4px)" },
+                { y: 0, opacity: 1, scale: 1, filter: "blur(0px)", duration: 1.2 }
+            )
+                .fromTo(".hero-title",
+                    { y: 80, opacity: 0, filter: "blur(10px)", transformOrigin: "center bottom" },
+                    { y: 0, opacity: 1, filter: "blur(0px)", stagger: 0.1 }, "-=0.8"
+                )
+                .fromTo(".hero-sub",
+                    { y: 40, opacity: 0, filter: "blur(5px)" },
+                    { y: 0, opacity: 1, filter: "blur(0px)" }, "-=1.0"
+                )
+                // "CTA buttons float slightly with micro-parallax"
+                .fromTo(".hero-btns",
+                    { y: 30, opacity: 0, scale: 0.95 },
+                    { y: 0, opacity: 1, scale: 1, ease: "back.out(1.2)" }, "-=0.8"
+                );
+
+            // "Hero shrinks slightly while fading" on scroll
+            gsap.to(".hero-content-wrapper", {
+                scrollTrigger: {
+                    trigger: ".hero-section",
+                    start: "top top",
+                    end: "bottom 40%",
+                    scrub: true
+                },
+                scale: 0.95,
+                opacity: 0,
+                y: -50,
+                filter: "blur(8px)"
+            });
+
+
             // --- PROBLEM SECTION ---
-            gsap.from(".problem-item", {
-                scrollTrigger: {
-                    trigger: "#problem",
-                    start: "top 70%",
-                    toggleActions: "play none none reverse"
-                },
-                x: -50,
-                opacity: 0,
-                duration: 0.8,
-                stagger: 0.2,
-                ease: "power2.out"
+            // "Problem cards rise individually with staggered delay"
+            // "Soft shadow deepens on reveal"
+            const problemBatch = gsap.utils.toArray('.problem-item');
+            gsap.fromTo(problemBatch,
+                { x: -50, opacity: 0, filter: "blur(5px)" },
+                {
+                    x: 0,
+                    opacity: 1,
+                    filter: "blur(0px)",
+                    stagger: 0.15,
+                    duration: 1.2,
+                    ease: GOLDEN_EASE,
+                    scrollTrigger: {
+                        trigger: "#problem",
+                        start: "top 65%"
+                    }
+                }
+            );
+
+            // "Cards subtly tilt based on scroll direction" - Simulated via Scrub
+            gsap.fromTo(".problem-solution-card",
+                { y: 100, opacity: 0, rotateX: 10, scale: 0.9 },
+                {
+                    y: 0,
+                    opacity: 1,
+                    rotateX: 0,
+                    scale: 1,
+                    duration: 1.5,
+                    ease: SLOW_EASE,
+                    scrollTrigger: {
+                        trigger: ".problem-solution-card",
+                        start: "top 75%"
+                    }
+                }
+            );
+
+            // Continuous float effect for solution card
+            gsap.to(".problem-solution-card", {
+                y: -15,
+                duration: 3,
+                yoyo: true,
+                repeat: -1,
+                ease: "sine.inOut"
             });
 
-            gsap.from(".problem-solution-card", {
-                scrollTrigger: {
-                    trigger: "#problem",
-                    start: "top 60%",
-                },
-                x: 100,
-                opacity: 0,
-                rotate: 5,
-                duration: 1.2,
-                ease: "power4.out"
-            });
-
-            // --- TEXT REVEAL (ASTRAX CHANGES GAME) ---
-            // Simulating the text reveal scrubbing
-            const splitText = document.querySelectorAll(".text-reveal-span");
-            gsap.fromTo(splitText,
-                { color: "#334155", opacity: 0.3 },
+            // --- TEXT REVEAL ---
+            gsap.fromTo(".text-reveal-span",
+                { color: "#334155", opacity: 0.2 },
                 {
                     color: "#ffffff",
                     opacity: 1,
-                    stagger: 0.5,
+                    stagger: 0.2,
+                    duration: 0.8,
                     scrollTrigger: {
                         trigger: ".problem-solution-card",
                         start: "top 60%",
@@ -104,66 +142,85 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                 }
             );
 
-            // --- GENERIC ANIMATE-ON-SCROLL (Fix for RankFlow, Testimonials, etc.) ---
-            // This targets all elements that relied on the old IntersectionObserver
-            const animatedElements = gsap.utils.toArray('.animate-on-scroll');
-            animatedElements.forEach((el: any) => {
-                gsap.fromTo(el,
-                    { y: 50, opacity: 0, scale: 0.95 },
+            // --- HOW IT WORKS CARDS & LINE ---
+            // "Progress line draws as user scrolls"
+            const cards = gsap.utils.toArray(['.work-card', '.feature-card']);
+            cards.forEach((card: any, i) => {
+                gsap.fromTo(card,
+                    { y: 80, opacity: 0, scale: 0.95, filter: "blur(8px)" },
                     {
                         y: 0,
                         opacity: 1,
                         scale: 1,
-                        duration: 0.8,
+                        filter: "blur(0px)",
+                        duration: 1.2,
+                        ease: GOLDEN_EASE,
+                        scrollTrigger: {
+                            trigger: card,
+                            start: "top 85%",
+                        },
+                        delay: i % 3 * 0.1
+                    }
+                );
+            });
+
+            gsap.to("#how-line-fill", {
+                x: "0%",
+                ease: "none",
+                scrollTrigger: {
+                    trigger: ".work-section",
+                    start: "top 60%",
+                    end: "bottom 80%",
+                    scrub: true
+                }
+            });
+
+            // --- DASHBOARD PREVIEW ---
+            // "Dashboard emerges from blur", "Glass cards shimmer"
+            // "Reflections move slowly across glass surfaces"
+            const dashTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: ".dashboard-section",
+                    start: "top 70%"
+                }
+            });
+
+            dashTl.fromTo(".dashboard-preview",
+                { rotateX: 20, y: 100, opacity: 0, filter: "blur(15px)", scale: 0.9 },
+                { rotateX: 0, y: 0, opacity: 1, filter: "blur(0px)", scale: 1, duration: 1.6, ease: SLOW_EASE }
+            );
+
+            // Parallax effect on the dashboard image
+            gsap.to(".dashboard-preview img", {
+                yPercent: -10,
+                ease: "none",
+                scrollTrigger: {
+                    trigger: ".dashboard-section",
+                    start: "top bottom",
+                    end: "bottom top",
+                    scrub: true
+                }
+            });
+
+            // --- GENERIC FADE IN FOR REST ---
+            const animatedElements = gsap.utils.toArray('.animate-on-scroll');
+            animatedElements.forEach((el: any) => {
+                gsap.fromTo(el,
+                    { y: 40, opacity: 0, filter: "blur(5px)" },
+                    {
+                        y: 0,
+                        opacity: 1,
+                        filter: "blur(0px)",
+                        duration: 1,
                         ease: "power3.out",
                         scrollTrigger: {
                             trigger: el,
-                            start: "top 85%",
-                            toggleActions: "play none none reverse"
+                            start: "top 85%"
                         }
                     }
                 );
             });
 
-            // --- HOW IT WORKS CARDS ---
-            gsap.from(".work-card", {
-                scrollTrigger: {
-                    trigger: ".work-section",
-                    start: "top 75%"
-                },
-                y: 100,
-                opacity: 0,
-                stagger: 0.2,
-                duration: 1,
-                ease: "power4.out"
-            });
-
-            // --- BENTO FEATURES ---
-            gsap.from(".feature-card", {
-                scrollTrigger: {
-                    trigger: "#features",
-                    start: "top 80%"
-                },
-                y: 50,
-                opacity: 0,
-                scale: 0.9,
-                stagger: 0.1,
-                duration: 0.8,
-                ease: "back.out(1.2)"
-            });
-
-            // --- DASHBOARD PREVIEW ---
-            gsap.from(".dashboard-preview", {
-                scrollTrigger: {
-                    trigger: ".dashboard-section",
-                    start: "top 80%"
-                },
-                rotateX: 15,
-                y: 100,
-                opacity: 0,
-                duration: 1.5,
-                ease: "power3.out"
-            });
 
         }, containerRef);
 
@@ -197,7 +254,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                 <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-radion-primary/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
                 <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-radion-accent/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
 
-                <div className="max-w-5xl mx-auto z-10 relative flex flex-col items-center">
+                <div className="max-w-5xl mx-auto z-10 relative flex flex-col items-center hero-content-wrapper">
                     <div className="hero-badge inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full border border-slate-700/50 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-radion-primary/10">
                         <span className="flex h-2 w-2 relative">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-radion-accent opacity-75"></span>
@@ -445,9 +502,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         <p className="text-xl text-gray-400">Three simple steps to transform your career trajectory.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+                        {/* Connection Line layer */}
+                        <div className="hidden md:block absolute top-[2.5rem] left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-radion-primary/30 via-radion-accent/30 to-green-500/30 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-radion-primary via-radion-accent to-green-500 w-full -translate-x-full" id="how-line-fill"></div>
+                        </div>
+
                         {/* Step 1 */}
-                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-primary/50 transition-colors">
+                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(79,70,229,0.15)] hover:-translate-y-2">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-radion-primary rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-radion-primary/50">1</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <LayoutDashboard className="w-16 h-16 text-radion-primary/50 group-hover:text-radion-primary transition-colors" />
@@ -457,7 +519,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         </div>
 
                         {/* Step 2 */}
-                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-accent/50 transition-colors">
+                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-accent/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(217,70,239,0.15)] hover:-translate-y-2">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-radion-accent rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-radion-accent/50">2</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <Code2 className="w-16 h-16 text-radion-accent/50 group-hover:text-radion-accent transition-colors" />
@@ -467,7 +529,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         </div>
 
                         {/* Step 3 */}
-                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-green-500/50 transition-colors">
+                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-green-500/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,197,94,0.15)] hover:-translate-y-2">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-green-900/50">3</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <Briefcase className="w-16 h-16 text-green-500/50 group-hover:text-green-500 transition-colors" />
