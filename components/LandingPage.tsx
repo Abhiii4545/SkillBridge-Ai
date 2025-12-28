@@ -142,8 +142,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                 }
             );
 
-            // --- HOW IT WORKS CARDS & LINE ---
-            // "Progress line draws as user scrolls"
+            // --- HOW IT WORKS CARDS ---
+            // "Steps appear one by one"
             const cards = gsap.utils.toArray(['.work-card', '.feature-card']);
             cards.forEach((card: any, i) => {
                 gsap.fromTo(card,
@@ -162,17 +162,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         delay: i % 3 * 0.1
                     }
                 );
-            });
-
-            gsap.to("#how-line-fill", {
-                x: "0%",
-                ease: "none",
-                scrollTrigger: {
-                    trigger: ".work-section",
-                    start: "top 60%",
-                    end: "bottom 80%",
-                    scrub: true
-                }
             });
 
             // --- DASHBOARD PREVIEW ---
@@ -503,11 +492,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
-                        {/* Connection Line layer */}
-                        <div className="hidden md:block absolute top-[2.5rem] left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-radion-primary/30 via-radion-accent/30 to-green-500/30 overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-r from-radion-primary via-radion-accent to-green-500 w-full -translate-x-full" id="how-line-fill"></div>
-                        </div>
-
                         {/* Step 1 */}
                         <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(79,70,229,0.15)] hover:-translate-y-2">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-radion-primary rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-radion-primary/50">1</div>
