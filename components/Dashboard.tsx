@@ -207,8 +207,9 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                 setApplicationError('Please upload a PDF file.');
                 return;
             }
-            if (file.size > 5 * 1024 * 1024) {
-                setApplicationError('File size exceeds 5MB.');
+            // Fix: Reduce limit to 800KB to ensure Firestore doc size (<1MB) is respected
+            if (file.size > 800 * 1024) {
+                setApplicationError('File size exceeds 800KB (Firestore Limit). Please compress your PDF.');
                 return;
             }
             setApplicationResume(file);

@@ -50,6 +50,7 @@ const App: React.FC = () => {
         }
     }, [darkMode]);
 
+
     // Load Internships (Real-Time)
     useEffect(() => {
         const unsubscribe = subscribeToInternships((cloudInternships) => {
@@ -60,11 +61,28 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
+    // FIX: Load persisted applications from localStorage on mount (Offline/Mock Support)
+    useEffect(() => {
+        const storedApps = localStorage.getItem('skillbridge_applications');
+        if (storedApps) {
+            try {
+                const parsed = JSON.parse(storedApps);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    console.log("Restoring applications from localStorage:", parsed.length);
+                    setApplications(parsed);
+                }
+            } catch (e) {
+                console.error("Failed to restore applications from localStorage", e);
+            }
+        }
+    }, []);
+
 
 
     // 5. REAL-TIME APPLICATIONS LISTENER
     useEffect(() => {
         if (userProfile && userProfile.email) {
+            console.log("App.tsx: User Profile updated, restarting listeners...", userProfile.email, userProfile.companyName);
             import('./services/firebase').then(({ subscribeToStudentApplications, subscribeToRecruiterApplications }) => {
                 let unsubscribe = () => { };
 
@@ -74,12 +92,16 @@ const App: React.FC = () => {
                         localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
                     });
                 } else if (userProfile.role === 'recruiter') {
-                    // Filter by EMAIL (Strict Isolation)
+                    // Filter by EMAIL (Strict Isolation) + Company Fallback (Legacy)
                     if (userProfile.email) {
-                        unsubscribe = subscribeToRecruiterApplications(userProfile.email, (apps) => {
-                            setApplications(apps);
-                            localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
-                        });
+                        unsubscribe = subscribeToRecruiterApplications(
+                            userProfile.email,
+                            (apps) => {
+                                setApplications(apps);
+                                localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
+                            },
+                            userProfile.companyName // Legacy Fallback
+                        );
                     }
                 }
 
@@ -101,16 +123,23 @@ const App: React.FC = () => {
 
                         if (!profile) {
                             console.log("No profile found in Firestore, creating new default profile.");
+                            // Check for pending role attempt (Fixes Recruiter Login Race Condition)
+                            const pendingRole = localStorage.getItem('skillbridge_pending_role');
+                            const initialRole = (pendingRole === 'recruiter' || pendingRole === 'student') ? pendingRole : 'student';
+
                             profile = {
                                 name: user.displayName || 'User',
                                 email: user.email,
-                                role: 'student', // Default role
+                                role: initialRole,
                                 skills: [],
                                 experienceLevel: 'Student',
                                 summary: '',
                                 missingSkills: []
                             };
                             await saveUserProfile(user.email, profile);
+                            // Clear pending role to avoid stale data impacting future logic? 
+                            // Actually keep it until handleLogin confirms? No, safe to keep or ignore.
+                            localStorage.removeItem('skillbridge_pending_role');
                         } else {
                             // FAST FIX: Ensure email is present in the object even if missing in DB data
                             profile = { ...profile, email: user.email };
@@ -143,23 +172,31 @@ const App: React.FC = () => {
 
     const toggleTheme = () => setDarkMode(!darkMode);
 
-    const handleLogin = (profile: UserProfile) => {
-        // 1. IMMEDIATE UPDATE: Log in and Redirect
-        setUserProfile(profile);
-        localStorage.setItem('skillbridge_current_user', JSON.stringify(profile));
-        setCurrentView('landing'); // Redirect to Landing Page IMMEDIATELY (User Request)
+    const handleLogin = async (profile: UserProfile) => {
+        // 1. Pre-Check Cloud to avoid overwriting existing data or defaulting wrong role
+        try {
+            const cloudProfile = await getUserProfile(profile.email);
+            let finalProfile = profile;
 
-        // 2. BACKGROUND: Check Persistence
-        // We do not await this, so the UI is instant.
-        if (profile.email) {
-            getUserProfile(profile.email).then((savedProfile) => {
-                if (savedProfile && savedProfile.skills && savedProfile.skills.length > 0) {
-                    const mergedProfile = { ...profile, ...savedProfile };
-                    setUserProfile(mergedProfile);
-                    localStorage.setItem('skillbridge_current_user', JSON.stringify(mergedProfile));
-                    console.log("Profile merged from Firestore in background");
-                }
-            }).catch(err => console.error("Background profile sync failed", err));
+            if (cloudProfile) {
+                console.log("Found existing cloud profile, merging...");
+                finalProfile = { ...profile, ...cloudProfile };
+            } else {
+                console.log("New user (or first cloud sync), saving initial profile...");
+                // This is CRITICAL: Save the intended role (e.g. Recruiter) before onAuthStateChanged defaults it to Student
+                await saveUserProfile(profile.email, profile);
+            }
+
+            // 2. Update Local State & Redirect
+            setUserProfile(finalProfile);
+            localStorage.setItem('skillbridge_current_user', JSON.stringify(finalProfile));
+            setCurrentView('landing');
+
+        } catch (e) {
+            console.error("Login sync failed", e);
+            // Fallback
+            setUserProfile(profile);
+            setCurrentView('landing');
         }
     };
 

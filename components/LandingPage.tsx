@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { UserProfile } from '../types';
 import ResumeUpload from './ResumeUpload';
 import { FileText, LayoutDashboard, Sparkles, Briefcase, TrendingUp, CheckCircle, CheckCircle2, Target, ArrowRight, UploadCloud, X, ExternalLink, Code2, Brain, Zap, BarChart3, ChevronDown, Lock } from 'lucide-react';
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface LandingPageProps {
     isLoggedIn: boolean;
@@ -15,51 +19,134 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLoginStudent, onLoginRecruiter, onGoToDashboard, onResumeAnalyzed, onBuildResume, onUploadResume }) => {
-    const [scrollY, setScrollY] = useState(0);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    // Ref for the text reveal section
-    const textRevealRef = useRef<HTMLDivElement>(null);
-    const [revealProgress, setRevealProgress] = useState(0);
+    // Initial GSAP Setup
+    React.useEffect(() => {
+        const ctx = gsap.context(() => {
+            // --- HEADER / HERO ANIMATIONS ---
+            const tl = gsap.timeline();
 
-    useEffect(() => {
-        const handleScroll = () => {
-            setScrollY(window.scrollY);
+            tl.fromTo(".hero-badge",
+                { y: -20, opacity: 0 },
+                { y: 0, opacity: 1, duration: 1, ease: "power3.out" }
+            )
+                .fromTo(".hero-title",
+                    { y: 60, opacity: 0 },
+                    { y: 0, opacity: 1, duration: 1.2, ease: "power4.out", stagger: 0.2 }, "-=0.5"
+                )
+                .fromTo(".hero-sub",
+                    { y: 30, opacity: 0 },
+                    { y: 0, opacity: 1, duration: 1, ease: "power3.out" }, "-=0.8"
+                )
+                .fromTo(".hero-btns",
+                    { y: 20, opacity: 0 },
+                    { y: 0, opacity: 1, duration: 1, ease: "back.out(1.7)" }, "-=0.6"
+                )
+                .fromTo(".upload-card",
+                    { y: 100, opacity: 0, scale: 0.95 },
+                    { y: 0, opacity: 1, scale: 1, duration: 1.2, ease: "expo.out" }, "-=0.8"
+                );
 
-            // Calculate text reveal progress based on scroll position relative to the element
-            if (textRevealRef.current) {
-                const rect = textRevealRef.current.getBoundingClientRect();
-                const windowHeight = window.innerHeight;
-                // Start revealing when element enters bottom half of screen
-                const start = windowHeight * 0.8;
-                const end = windowHeight * 0.2;
-
-                let progress = 0;
-                if (rect.top < start) {
-                    progress = Math.min(1, Math.max(0, (start - rect.top) / (start - end)));
-                }
-                setRevealProgress(progress);
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-
-        // Observer for fade-in elements
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('opacity-100', 'translate-y-0', 'scale-100');
-                    entry.target.classList.remove('opacity-0', 'translate-y-10', 'scale-95');
+            // Parallax Background
+            gsap.to(".hero-bg-mesh", {
+                yPercent: 30,
+                ease: "none",
+                scrollTrigger: {
+                    trigger: ".hero-section",
+                    start: "top top",
+                    end: "bottom top",
+                    scrub: true
                 }
             });
-        }, { threshold: 0.1 });
 
-        const animatedElements = document.querySelectorAll('.animate-on-scroll');
-        animatedElements.forEach((el) => observer.observe(el));
+            // --- PROBLEM SECTION ---
+            gsap.from(".problem-item", {
+                scrollTrigger: {
+                    trigger: "#problem",
+                    start: "top 70%",
+                    toggleActions: "play none none reverse"
+                },
+                x: -50,
+                opacity: 0,
+                duration: 0.8,
+                stagger: 0.2,
+                ease: "power2.out"
+            });
 
-        return () => {
-            window.removeEventListener('scroll', handleScroll);
-            observer.disconnect();
-        };
+            gsap.from(".problem-solution-card", {
+                scrollTrigger: {
+                    trigger: "#problem",
+                    start: "top 60%",
+                },
+                x: 100,
+                opacity: 0,
+                rotate: 5,
+                duration: 1.2,
+                ease: "power4.out"
+            });
+
+            // --- TEXT REVEAL (ASTRAX CHANGES GAME) ---
+            // Simulating the text reveal scrubbing
+            const splitText = document.querySelectorAll(".text-reveal-span");
+            gsap.fromTo(splitText,
+                { color: "#334155", opacity: 0.3 },
+                {
+                    color: "#ffffff",
+                    opacity: 1,
+                    stagger: 0.5,
+                    scrollTrigger: {
+                        trigger: ".problem-solution-card",
+                        start: "top 60%",
+                        end: "bottom 40%",
+                        scrub: 1
+                    }
+                }
+            );
+
+            // --- HOW IT WORKS CARDS ---
+            gsap.from(".work-card", {
+                scrollTrigger: {
+                    trigger: ".work-section",
+                    start: "top 75%"
+                },
+                y: 100,
+                opacity: 0,
+                stagger: 0.2,
+                duration: 1,
+                ease: "power4.out"
+            });
+
+            // --- BENTO FEATURES ---
+            gsap.from(".feature-card", {
+                scrollTrigger: {
+                    trigger: "#features",
+                    start: "top 80%"
+                },
+                y: 50,
+                opacity: 0,
+                scale: 0.9,
+                stagger: 0.1,
+                duration: 0.8,
+                ease: "back.out(1.2)"
+            });
+
+            // --- DASHBOARD PREVIEW ---
+            gsap.from(".dashboard-preview", {
+                scrollTrigger: {
+                    trigger: ".dashboard-section",
+                    start: "top 80%"
+                },
+                rotateX: 15,
+                y: 100,
+                opacity: 0,
+                duration: 1.5,
+                ease: "power3.out"
+            });
+
+        }, containerRef);
+
+        return () => ctx.revert();
     }, []);
 
     const scrollToSection = (id: string) => {
@@ -72,24 +159,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
     const colleges = ['IIT Hyderabad', 'IIIT Hyderabad', 'BITS Pilani', 'JNTU', 'Osmania University', 'CBIT', 'VNR VJIET', 'Vasavi College', 'GRIET', 'MGIT', 'KL University', 'Mahindra University'];
 
     return (
-        <div className="flex flex-col w-full overflow-hidden bg-gradient-to-br from-slate-950 via-[#0b0c15] to-slate-900 text-slate-100 font-sans selection:bg-radion-primary selection:text-white relative">
+        <div ref={containerRef} className="flex flex-col w-full overflow-hidden bg-gradient-to-br from-slate-950 via-[#0b0c15] to-slate-900 text-slate-100 font-sans selection:bg-radion-primary selection:text-white relative">
 
             {/* New Mesh Gradient / Aurora Effect */}
-            <div className="absolute top-0 left-0 w-full h-[100vh] overflow-hidden pointer-events-none z-0 opactiy-60">
+            {/* New Mesh Gradient / Aurora Effect */}
+            <div className="absolute top-0 left-0 w-full h-[100vh] overflow-hidden pointer-events-none z-0 opactiy-60 hero-bg-mesh">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse-slow"></div>
                 <div className="absolute top-[20%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/20 rounded-full blur-[120px] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
                 <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
             </div>
 
             {/* --- SECTION 1: HERO --- */}
-            <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 px-4 text-center overflow-hidden pb-20">
+            <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 px-4 text-center overflow-hidden pb-20 hero-section">
 
                 {/* Subtle Spotlight */}
                 <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-radion-primary/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
                 <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-radion-accent/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
 
                 <div className="max-w-5xl mx-auto z-10 relative flex flex-col items-center">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full border border-slate-700/50 bg-slate-900/50 backdrop-blur-md animate-slide-up opacity-0 shadow-lg shadow-radion-primary/10">
+                    <div className="hero-badge inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full border border-slate-700/50 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-radion-primary/10">
                         <span className="flex h-2 w-2 relative">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-radion-accent opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-radion-primary"></span>
@@ -97,16 +185,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         <span className="text-xs font-medium text-slate-300 tracking-wide uppercase">Hyderabad Career Intelligence</span>
                     </div>
 
-                    <h1 className="text-6xl sm:text-7xl md:text-8xl font-semibold tracking-tighter leading-[1.05] mb-6 animate-slide-up opacity-0 text-gradient-apple drop-shadow-2xl">
+                    <h1 className="hero-title text-6xl sm:text-7xl md:text-8xl font-semibold tracking-tighter leading-[1.05] mb-6 text-gradient-apple drop-shadow-2xl">
                         Your career. <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-radion-primary to-radion-accent">Mastered.</span>
                     </h1>
 
-                    <p className="text-xl sm:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium mb-10 animate-slide-up opacity-0" style={{ animationDelay: '0.2s' }}>
+                    <p className="hero-sub text-xl sm:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium mb-10" style={{ animationDelay: '0.2s' }}>
                         The AI-powered career brain for Hyderabad's B.Tech students. <br className="hidden md:block" /> Decode resumes. Find gaps. Get hired.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4 items-center animate-slide-up opacity-0 mb-16" style={{ animationDelay: '0.3s' }}>
+                    <div className="hero-btns flex flex-col sm:flex-row gap-4 items-center mb-16" style={{ animationDelay: '0.3s' }}>
                         {!isLoggedIn && (
                             <>
                                 <button
@@ -167,7 +255,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                     </div>
 
                     {/* Replaced Hero Visual with Upload Section */}
-                    <div id="upload-section" className="w-full max-w-4xl animate-slide-up opacity-0" style={{ animationDelay: '0.5s' }}>
+                    <div id="upload-section" className="upload-card w-full max-w-4xl" style={{ animationDelay: '0.5s' }}>
                         <div className="relative rounded-[2.5rem] overflow-hidden border border-neutral-800 bg-neutral-900/50 shadow-2xl p-8 sm:p-12 backdrop-blur-sm hover:border-radion-primary/30 transition-colors duration-500 group">
                             <div className="absolute inset-0 bg-gradient-to-b from-blue-900/5 to-transparent pointer-events-none group-hover:from-blue-900/10 transition-colors duration-500"></div>
 
@@ -251,7 +339,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
             <section id="problem" className="py-32 px-6 bg-transparent relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-radion-primary/5 to-transparent pointer-events-none"></div>
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                    <div className="animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
+                    <div className="">
                         <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
                             Why 90% of B.Tech students <span className="text-red-500">get rejected.</span>
                         </h2>
@@ -259,28 +347,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                             ATS (Applicant Tracking Systems) filter out resume keywords. If your resume doesn't match the job description perfectly, human eyes never see it.
                         </p>
                         <ul className="space-y-4">
-                            <li className="flex items-start gap-3">
+                            <li className="problem-item flex items-start gap-3">
                                 <div className="mt-1 w-6 h-6 rounded-full bg-red-900/20 flex items-center justify-center flex-shrink-0"><X className="w-3 h-3 text-red-500" /></div>
                                 <span className="text-lg text-gray-300">Generic templates that blend in.</span>
                             </li>
-                            <li className="flex items-start gap-3">
+                            <li className="problem-item flex items-start gap-3">
                                 <div className="mt-1 w-6 h-6 rounded-full bg-red-900/20 flex items-center justify-center flex-shrink-0"><X className="w-3 h-3 text-red-500" /></div>
                                 <span className="text-lg text-gray-300">Missing critical keywords for modern tech stacks.</span>
                             </li>
-                            <li className="flex items-start gap-3">
+                            <li className="problem-item flex items-start gap-3">
                                 <div className="mt-1 w-6 h-6 rounded-full bg-red-900/20 flex items-center justify-center flex-shrink-0"><X className="w-3 h-3 text-red-500" /></div>
                                 <span className="text-lg text-gray-300">No project evidence to back up skill claims.</span>
                             </li>
                         </ul>
                     </div>
-                    <div ref={textRevealRef} className="radion-card p-8 rounded-3xl border border-[#2c2c2e] animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-200">
+                    <div className="problem-solution-card radion-card p-8 rounded-3xl border border-[#2c2c2e]">
                         <p className="text-3xl font-bold leading-tight">
-                            <span className="text-reveal-span" style={{ color: revealProgress > 0.1 ? '#fff' : '#333' }}>AstraX changes the game. </span>
-                            <span className="text-reveal-span" style={{ color: revealProgress > 0.3 ? '#fff' : '#333' }}>We use Gemini AI to </span>
-                            <span className="text-reveal-span" style={{ color: revealProgress > 0.5 ? '#fff' : '#334155' }}>reverse-engineer the hiring process, </span>
-                            <span className="text-reveal-span" style={{ color: revealProgress > 0.7 ? '#fff' : '#334155' }}>giving you the </span>
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-radion-secondary to-radion-accent transition-opacity duration-500" style={{ opacity: revealProgress > 0.9 ? 1 : 0.3 }}>exact cheat sheet </span>
-                            <span className="text-reveal-span" style={{ color: revealProgress > 0.9 ? '#fff' : '#334155' }}>to get shortlisted.</span>
+                            <span className="text-reveal-span">AstraX changes the game. </span>
+                            <span className="text-reveal-span">We use Gemini AI to </span>
+                            <span className="text-reveal-span">reverse-engineer the hiring process, </span>
+                            <span className="text-reveal-span">giving you the </span>
+                            <span className="text-reveal-span">exact cheat sheet </span>
+                            <span className="text-reveal-span">to get shortlisted.</span>
                         </p>
                     </div>
                 </div>
@@ -328,7 +416,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
             </section>
 
             {/* --- SECTION 5: HOW IT WORKS --- */}
-            <section className="py-32 px-6 bg-transparent relative">
+            <section className="work-section py-32 px-6 bg-transparent relative">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-150"></div>
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-20">
@@ -338,7 +426,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                         {/* Step 1 */}
-                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-primary/50 transition-colors animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
+                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-primary/50 transition-colors">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-radion-primary rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-radion-primary/50">1</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <LayoutDashboard className="w-16 h-16 text-radion-primary/50 group-hover:text-radion-primary transition-colors" />
@@ -348,7 +436,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         </div>
 
                         {/* Step 2 */}
-                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-accent/50 transition-colors animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-100">
+                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-radion-accent/50 transition-colors">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-radion-accent rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-radion-accent/50">2</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <Code2 className="w-16 h-16 text-radion-accent/50 group-hover:text-radion-accent transition-colors" />
@@ -358,7 +446,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         </div>
 
                         {/* Step 3 */}
-                        <div className="radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-green-500/50 transition-colors animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-200">
+                        <div className="work-card radion-card p-8 rounded-[2.5rem] border border-[#2c2c2e] relative group hover:border-green-500/50 transition-colors">
                             <div className="absolute -top-6 left-8 w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-green-900/50">3</div>
                             <div className="mt-4 mb-6 h-40 flex items-center justify-center bg-black/50 rounded-2xl border border-white/5">
                                 <Briefcase className="w-16 h-16 text-green-500/50 group-hover:text-green-500 transition-colors" />
@@ -373,14 +461,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
             {/* --- SECTION 6: BENTO FEATURES --- */}
             <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-transparent">
                 <div className="max-w-7xl mx-auto">
-                    <h2 className="text-4xl md:text-5xl font-semibold text-center mb-16 tracking-tight text-white animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
+                    <h2 className="text-4xl md:text-5xl font-semibold text-center mb-16 tracking-tight text-white feature-card">
                         CareerOS Features.
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-6 auto-rows-[350px]">
 
                         {/* Feature 1: Large - Deep Analysis */}
-                        <div className="md:col-span-4 relative overflow-hidden rounded-[2rem] radion-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 hover:border-radion-primary/50 hover:scale-[1.01] hover:shadow-[0_0_40px_rgba(79,70,229,0.15)]">
+                        <div className="feature-card md:col-span-4 relative overflow-hidden rounded-[2rem] radion-card group hover:border-radion-primary/50 hover:scale-[1.01] hover:shadow-[0_0_40px_rgba(79,70,229,0.15)]">
                             <div className="absolute inset-0 bg-gradient-to-br from-radion-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                             <div className="p-10 h-full flex flex-col justify-between relative z-10">
                                 <div>
@@ -400,7 +488,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         </div>
 
                         {/* Feature 2: Small - Instant Match */}
-                        <div className="md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-100 hover:border-radion-secondary/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                        <div className="feature-card md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group hover:border-radion-secondary/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]">
                             <div className="p-8 h-full flex flex-col">
                                 <Zap className="w-10 h-10 text-yellow-400 mb-4 fill-yellow-400/20 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300" />
                                 <h3 className="text-2xl font-bold mb-2">Instant Match</h3>
@@ -415,7 +503,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         </div>
 
                         {/* Feature 3: Small - Skill Gaps */}
-                        <div className="md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-200 hover:border-radion-accent/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]">
+                        <div className="feature-card md:col-span-2 relative overflow-hidden rounded-[2rem] glass-card group hover:border-radion-accent/50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]">
                             <div className="p-8 h-full flex flex-col">
                                 <BarChart3 className="w-10 h-10 text-radion-accent mb-4 group-hover:-translate-y-1 transition-transform duration-300" />
                                 <h3 className="text-2xl font-bold mb-2">Skill Gaps</h3>
@@ -432,7 +520,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                         </div>
 
                         {/* Feature 4: Large - Privacy */}
-                        <div className="md:col-span-4 relative overflow-hidden rounded-[2rem] glass-card group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700 delay-300 hover:border-green-500/50 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(34,197,94,0.15)]">
+                        <div className="feature-card md:col-span-4 relative overflow-hidden rounded-[2rem] glass-card group hover:border-green-500/50 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(34,197,94,0.15)]">
                             <div className="p-10 h-full flex items-center">
                                 <div className="flex-1">
                                     <Lock className="w-12 h-12 text-green-500 mb-6 group-hover:scale-110 group-hover:rotate-[15deg] transition-all duration-300" />
@@ -452,12 +540,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
             </section>
 
             {/* --- SECTION 7: LIVE DASHBOARD PREVIEW --- */}
-            <section className="py-24 px-6 bg-transparent">
+            <section className="dashboard-section py-24 px-6 bg-transparent">
                 <div className="max-w-6xl mx-auto text-center">
                     <h2 className="text-3xl font-bold mb-4">Your Command Center</h2>
                     <p className="text-gray-400 mb-12">Everything you need to manage your job search in one place.</p>
 
-                    <div className="relative rounded-xl overflow-hidden shadow-2xl border border-white/10 group animate-on-scroll opacity-0 translate-y-10 scale-95 transition-all duration-700">
+                    <div className="dashboard-preview relative rounded-xl overflow-hidden shadow-2xl border border-white/10 group">
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10 opacity-60"></div>
                         <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2600" alt="Dashboard Interface" className="w-full opacity-80 group-hover:scale-105 transition-transform duration-700" />
                         <div className="absolute bottom-10 left-0 w-full text-center z-20">

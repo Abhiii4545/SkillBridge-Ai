@@ -178,14 +178,47 @@ export const submitApplicationToFirestore = async (application: any) => {
   await addDoc(collection(db, "applications"), application);
 };
 
-// 7. Subscribe to Job Applications (Recruiter View) - STRICT ISOLATION BY EMAIL
-export const subscribeToRecruiterApplications = (recruiterEmail: string, callback: (apps: any[]) => void) => {
+// 7. Subscribe to Job Applications (Recruiter View) - HYBRID ISOLATION (Email + Legacy Fallback)
+export const subscribeToRecruiterApplications = (recruiterEmail: string, callback: (apps: any[]) => void, companyName?: string) => {
   if (!db) return () => { };
-  const q = query(collection(db, "applications"), where("recruiterEmail", "==", recruiterEmail));
-  return onSnapshot(q, (snapshot) => {
-    const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    callback(apps);
+
+  let appsFromEmail: any[] = [];
+  let appsFromCompany: any[] = [];
+
+  const mergeAndCallback = () => {
+    // Deduplicate by ID
+    const all = [...appsFromEmail, ...appsFromCompany];
+    const unique = Array.from(new Map(all.map(item => [item.id, item])).values());
+    console.log(`Merged count: ${unique.length}`);
+    callback(unique);
+  };
+
+  // 1. Strict Isolation (New Apps)
+  console.log(`Subscribing to Recruiter Apps (Email: ${recruiterEmail})`);
+  const q1 = query(collection(db, "applications"), where("recruiterEmail", "==", recruiterEmail));
+  const unsub1 = onSnapshot(q1, (snap) => {
+    appsFromEmail = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    console.log(`Subscription 1 (Email): ${appsFromEmail.length}`);
+    mergeAndCallback();
   });
+
+  // 2. Legacy Fallback (Old Apps with no owner)
+  let unsub2 = () => { };
+  if (companyName) {
+    console.log(`Subscribing to Legacy Apps (Company: ${companyName})`);
+    const q2 = query(collection(db, "applications"), where("companyName", "==", companyName));
+    unsub2 = onSnapshot(q2, (snap) => {
+      const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Only show apps that DON'T have a specific owner (Legacy) OR match me
+      appsFromCompany = raw.filter((a: any) => !a.recruiterEmail || a.recruiterEmail === recruiterEmail);
+      console.log(`Subscription 2 (Company): ${raw.length} raw, ${appsFromCompany.length} after filter`);
+      mergeAndCallback();
+    });
+  } else {
+    console.log("No Company Name provided for Legacy Fallback.");
+  }
+
+  return () => { unsub1(); unsub2(); };
 };
 
 export const deleteInternshipFromFirestore = async (internshipId: string) => {

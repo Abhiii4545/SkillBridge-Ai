@@ -14,15 +14,30 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
   const [role, setRole] = useState<'student' | 'recruiter'>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
     setIsLoading(true);
 
     // Simulate API delay
     setTimeout(() => {
       let mockProfile: UserProfile | null = null;
 
+      // ... (rest of logic) ...
       const savedProfileStr = role === 'recruiter'
         ? localStorage.getItem('skillbridge_saved_recruiter_profile')
         : localStorage.getItem('skillbridge_saved_profile');
@@ -68,6 +83,8 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
 
   const handleSocialLogin = async (providerName: 'google' | 'apple') => {
     setIsLoading(true);
+    setError('');
+    // ... (rest of social login) ...
     try {
       let user: any;
       if (!auth) {
@@ -81,6 +98,7 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
         // Simulate delay
         await new Promise(resolve => setTimeout(resolve, 800));
       } else {
+        localStorage.setItem('skillbridge_pending_role', role); // Capture intent before Auth
         const provider = providerName === 'google' ? googleProvider : appleProvider;
         const result = await signInWithPopup(auth, provider);
         user = result.user;
@@ -125,14 +143,14 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
       onLogin(profile);
     } catch (error: any) {
       console.error("Social login error:", error);
-      alert("Social login failed. Please try the email login/mock login button.");
+      setError("Social login failed. Please try the email login.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#050511] py-12 px-4 sm:px-6 lg:px-8 radion-bg">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-radion-bg py-12 px-4 sm:px-6 lg:px-8">
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse"></div>
@@ -140,7 +158,7 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="radion-glass rounded-[2rem] p-10 animate-slide-up shadow-2xl relative">
+        <div className="glass-card rounded-[2rem] p-10 animate-slide-up shadow-2xl relative">
           <button
             onClick={onBack}
             className="absolute top-6 left-6 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
@@ -203,6 +221,11 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+                {error}
+              </div>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-bold text-slate-300 mb-2">Email Address</label>
               <input
@@ -219,6 +242,8 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
               <input
                 id="password"
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-5 py-3.5 bg-black/20 border border-white/10 rounded-2xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none text-white placeholder-slate-500"
               />
@@ -227,8 +252,7 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full flex items-center justify-center py-4 px-4 text-white text-lg font-bold shadow-xl transition-all duration-200 btn-bubble ${role === 'student' ? 'bubble-primary' : 'bubble-secondary'
-                }`}
+              className={`w-full flex items-center justify-center py-4 px-4 text-white text-lg font-bold shadow-xl transition-all duration-200 btn-bubble ${role === 'student' ? 'bubble-primary' : 'bubble-secondary'} ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               {isLoading ? (
                 <Loader2 className="w-6 h-6 animate-spin" />

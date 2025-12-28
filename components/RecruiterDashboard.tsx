@@ -242,7 +242,11 @@ This candidate applied before the resume upload feature was mandatory.
 
     const currentApplicants = useMemo(() => {
         if (!viewingApplicantsJobId) return [];
-        return applications.filter(app => app.jobId === viewingApplicantsJobId);
+        console.log("Filtering apps for JobID:", viewingApplicantsJobId);
+        console.log("Total available apps:", applications.length);
+        const matched = applications.filter(app => app.jobId === viewingApplicantsJobId);
+        console.log("Matched apps:", matched.length);
+        return matched;
     }, [applications, viewingApplicantsJobId]);
 
     if (showCompanySetup) {
