@@ -22,7 +22,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Initial GSAP Setup
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
         const ctx = gsap.context(() => {
             // --- HEADER / HERO ANIMATIONS ---
             const tl = gsap.timeline();
@@ -103,6 +103,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, userRole, onLogin
                     }
                 }
             );
+
+            // --- GENERIC ANIMATE-ON-SCROLL (Fix for RankFlow, Testimonials, etc.) ---
+            // This targets all elements that relied on the old IntersectionObserver
+            const animatedElements = gsap.utils.toArray('.animate-on-scroll');
+            animatedElements.forEach((el: any) => {
+                gsap.fromTo(el,
+                    { y: 50, opacity: 0, scale: 0.95 },
+                    {
+                        y: 0,
+                        opacity: 1,
+                        scale: 1,
+                        duration: 0.8,
+                        ease: "power3.out",
+                        scrollTrigger: {
+                            trigger: el,
+                            start: "top 85%",
+                            toggleActions: "play none none reverse"
+                        }
+                    }
+                );
+            });
 
             // --- HOW IT WORKS CARDS ---
             gsap.from(".work-card", {
