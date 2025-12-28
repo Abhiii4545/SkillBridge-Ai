@@ -1,5 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 // Remove top-level worker assignment to prevent startup crashes
 // Worker will be initialized lazily inside extractTextFromPdf
@@ -101,63 +101,79 @@ const extractJSON = (text: string): any => {
 };
 
 export const analyzeResume = async (base64Data: string, mimeType: string = 'application/pdf'): Promise<UserProfile> => {
-    const resumeText = await extractTextFromPdf(base64Data);
-
-    // SPEED OPTIMIZATION: Regex Fallbacks
-    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
-    const phoneRegex = /(\+?\d{1,3}[-.]?)?\s*\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/;
-
-    const emailMatch = resumeText.match(emailRegex);
-    const phoneMatch = resumeText.match(phoneRegex);
-
-    const fallbackEmail = emailMatch ? emailMatch[0] : "";
-    const fallbackPhone = phoneMatch ? phoneMatch[0] : "";
-
-    const systemPrompt = `You are a data extraction API. Return ONLY raw JSON. No markdown. No explanations.`;
-    const userPrompt = `
-  EXTRACT DATA FROM RESUME BELOW.
-  
-  RETURN JSON OBJECT WITH THESE EXACT KEYS:
-  {
-    "name": "Full Name",
-    "email": "email@example.com",
-    "phone": "Phone Number",
-    "university": "University Name",
-    "skills": ["Skill1", "Skill2"],
-    "summary": "Short professional summary",
-    "experienceLevel": "Student"
-  }
-
-  RESUME TEXT:
-  ${resumeText.substring(0, 10000)}
-  `;
-
-    const responseText = await callAI(systemPrompt, userPrompt);
-
     try {
-        const parsed = extractJSON(responseText);
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        name: { type: SchemaType.STRING },
+                        email: { type: SchemaType.STRING },
+                        university: { type: SchemaType.STRING },
+                        skills: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                        missingSkills: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                        summary: { type: SchemaType.STRING },
+                        experienceLevel: { type: SchemaType.STRING }
+                    }
+                }
+            }
+        });
+
+        const prompt = `
+      You are an expert career consultant for B.Tech students.
+      Analyze the provided resume document.
+      
+      CRITICAL: OUTPUT ENGLISH ONLY.
+      
+      Extract:
+      - Name, Email
+      - University
+      - Skills (Array of strings)
+      - Summary
+      - Experience Level
+      - Identify 3 missing skills for a generic tech role in Hyderabad.
+    `;
+
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                }
+            },
+            prompt
+        ]);
+
+        const response = await result.response;
+        const text = response.text();
+
+        // Clean up any markdown syntax if present (though JSON mode usually prevents this)
+        const cleanText = text.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(cleanText);
 
         return {
             ...parsed,
-            // Force Regex Overrides for critical contact info
-            email: fallbackEmail || parsed.email,
-            phone: fallbackPhone || parsed.phone,
-            // Ensure arrays
-            skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-            missingSkills: Array.isArray(parsed.missingSkills) ? parsed.missingSkills : []
-        };
-    } catch (e) {
-        console.warn("AI Parsing Failed, returning partial data via Regex");
-        return {
-            name: "Candidate",
-            email: fallbackEmail,
-            university: "",
-            skills: [],
-            missingSkills: [],
-            summary: "Could not analyze resume. Please fill details manually.",
-            experienceLevel: "Entry Level",
-            role: "student"
-        };
+            // Ensure compatibility with UserProfile interface
+            role: 'student', // Default role
+            phone: parsed.phone || "", // Add missing phone if not extracted
+            resumeUrl: "" // Will be set by upload logic
+        } as UserProfile;
+
+    } catch (error) {
+        console.error("Error analyzing resume:", error);
+        // Fallback to text extraction if inlineData fails (e.g. file too large or type not supported)
+        try {
+            console.warn("Falling back to text-based analysis...");
+            const resumeText = await extractTextFromPdf(base64Data);
+            const systemPrompt = `Extract data from resume. Return JSON.`;
+            const userPrompt = `RESUME TEXT: ${resumeText.substring(0, 10000)}`;
+            const fallbackText = await callAI(systemPrompt, userPrompt);
+            return extractJSON(fallbackText);
+        } catch (fallbackError) {
+            throw error;
+        }
     }
 };
 
