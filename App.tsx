@@ -8,7 +8,7 @@ import StudentOnboarding from './components/StudentOnboarding';
 import ResumeUploadPage from './components/ResumeUploadPage';
 import { ViewState, UserProfile, Application, Internship } from './types';
 import { MOCK_INTERNSHIPS } from './constants';
-import { saveUserProfile, getUserProfile, getInternshipsFromFirestore, subscribeToInternships, subscribeToNotifications, submitApplicationToFirestore, subscribeToRecruiterApplications, auth } from './services/firebase'; // Persistence
+import { saveUserProfile, getUserProfile, getInternshipsFromFirestore, subscribeToInternships, subscribeToNotifications, submitApplicationToFirestore, subscribeToRecruiterApplications, subscribeToStudentApplications, auth } from './services/firebase'; // Persistence
 import { onAuthStateChanged } from 'firebase/auth';
 
 const App: React.FC = () => {
@@ -80,33 +80,34 @@ const App: React.FC = () => {
 
 
     // 5. REAL-TIME APPLICATIONS LISTENER
+    // 5. REAL-TIME APPLICATIONS LISTENER
     useEffect(() => {
         if (userProfile && userProfile.email) {
             console.log("App.tsx: User Profile updated, restarting listeners...", userProfile.email, userProfile.companyName);
-            import('./services/firebase').then(({ subscribeToStudentApplications, subscribeToRecruiterApplications }) => {
-                let unsubscribe = () => { };
 
-                if (userProfile.role === 'student') {
-                    unsubscribe = subscribeToStudentApplications(userProfile.email, (apps) => {
-                        setApplications(apps);
-                        localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
-                    });
-                } else if (userProfile.role === 'recruiter') {
-                    // Filter by EMAIL (Strict Isolation) + Company Fallback (Legacy)
-                    if (userProfile.email) {
-                        unsubscribe = subscribeToRecruiterApplications(
-                            userProfile.email,
-                            (apps) => {
-                                setApplications(apps);
-                                localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
-                            },
-                            userProfile.companyName // Legacy Fallback
-                        );
-                    }
+            let unsubscribe = () => { };
+
+            if (userProfile.role === 'student') {
+                unsubscribe = subscribeToStudentApplications(userProfile.email, (apps) => {
+                    console.log("Student Apps Updated:", apps.length);
+                    setApplications(apps);
+                    localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
+                });
+            } else if (userProfile.role === 'recruiter') {
+                // Filter by EMAIL (Strict Isolation) + Company Fallback (Legacy)
+                if (userProfile.email) {
+                    unsubscribe = subscribeToRecruiterApplications(
+                        userProfile.email,
+                        (apps) => {
+                            setApplications(apps);
+                            localStorage.setItem('skillbridge_applications', JSON.stringify(apps));
+                        },
+                        userProfile.companyName // Legacy Fallback
+                    );
                 }
+            }
 
-                return () => unsubscribe();
-            });
+            return () => unsubscribe();
         }
     }, [userProfile]);
 
@@ -146,6 +147,15 @@ const App: React.FC = () => {
                         }
 
                         setUserProfile(profile);
+
+                        // AUTO-REDIRECT if on landing
+                        if (currentView === 'landing') {
+                            if (profile.role === 'recruiter') {
+                                setCurrentView('recruiter-dashboard');
+                            } else {
+                                setCurrentView('student-dashboard');
+                            }
+                        }
                     } catch (e) {
                         console.error("Profile restore error", e);
                         setUserProfile(null);
@@ -181,6 +191,13 @@ const App: React.FC = () => {
             if (cloudProfile) {
                 console.log("Found existing cloud profile, merging...");
                 finalProfile = { ...profile, ...cloudProfile };
+
+                // FIX: If the user explicitly logged in with a different role, UPDATE it.
+                if (profile.role && profile.role !== cloudProfile.role) {
+                    console.log(`Role switch detected: ${cloudProfile.role} -> ${profile.role}. Updating Cloud...`);
+                    finalProfile.role = profile.role;
+                    await saveUserProfile(finalProfile.email, finalProfile);
+                }
             } else {
                 console.log("New user (or first cloud sync), saving initial profile...");
                 // This is CRITICAL: Save the intended role (e.g. Recruiter) before onAuthStateChanged defaults it to Student
@@ -190,13 +207,23 @@ const App: React.FC = () => {
             // 2. Update Local State & Redirect
             setUserProfile(finalProfile);
             localStorage.setItem('skillbridge_current_user', JSON.stringify(finalProfile));
-            setCurrentView('landing');
+
+            // DIRECT REDIRECT based on role
+            if (finalProfile.role === 'recruiter') {
+                setCurrentView('recruiter-dashboard');
+            } else {
+                setCurrentView('student-dashboard');
+            }
 
         } catch (e) {
             console.error("Login sync failed", e);
             // Fallback
             setUserProfile(profile);
-            setCurrentView('landing');
+            if (profile.role === 'recruiter') {
+                setCurrentView('recruiter-dashboard');
+            } else {
+                setCurrentView('student-dashboard');
+            }
         }
     };
 

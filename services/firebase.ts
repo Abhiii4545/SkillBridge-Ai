@@ -157,6 +157,7 @@ export const subscribeToStudentApplications = (studentEmail: string, callback: (
 };
 
 // 5. Update Status & Notify (The "Unstop" Real-time Feature)
+// 5. Update Status & Notify (The "Unstop" Real-time Feature)
 export const updateApplicationStatusWithNotification = async (appId: string, newStatus: string, studentEmail: string, jobTitle: string) => {
   if (!db) return;
 
@@ -170,6 +171,23 @@ export const updateApplicationStatusWithNotification = async (appId: string, new
     `Your application for ${jobTitle} is now: ${newStatus}`,
     'status'
   );
+};
+
+// 5b. Send Email via Firebase Extension
+export const sendEmailViaFirebase = async (to: string, subject: string, html: string) => {
+  if (!db) return;
+  try {
+    await addDoc(collection(db, "mail"), {
+      to: [to],
+      message: {
+        subject: subject,
+        html: html
+      }
+    });
+    console.log("Email trigger written to 'mail' collection");
+  } catch (e) {
+    console.error("Error sending email trigger:", e);
+  }
 };
 
 // 6. Submit Application (Student -> Firestore)

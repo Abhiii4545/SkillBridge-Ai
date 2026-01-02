@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, Internship, Application } from '../types';
-import { addInternshipToFirestore, updateApplicationStatusWithNotification, deleteInternshipFromFirestore } from '../services/firebase';
+import { addInternshipToFirestore, updateApplicationStatusWithNotification, deleteInternshipFromFirestore, sendEmailViaFirebase } from '../services/firebase';
 import { Plus, Users, Search, MessageSquare, Briefcase, X, Check, Building2, Globe, Layout, LogOut, ArrowRight, Settings, ChevronRight, ChevronDown, Mail, Phone, Calendar, GraduationCap, MapPin, Download, Sparkles, XCircle, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface RecruiterDashboardProps {
@@ -182,11 +182,40 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
         }
     };
 
-    const handleStatusUpdate = async (appId: string, newStatus: Application['status']) => {
+    const handleStatusUpdate = async (appId: string, newStatus: Application['status'], studentEmail?: string, jobTitle?: string, studentName?: string) => {
         const app = applications.find(a => a.id === appId);
         if (app) {
             try {
+                // UPDATE FIRESTORE
                 await updateApplicationStatusWithNotification(appId, newStatus, app.studentEmail, app.jobTitle);
+
+                // MAILTO TRIGGER (Client-side Email Simulation) & FIREBASE EXTENSION TRIGGER
+                if (newStatus === 'Shortlisted' || newStatus === 'Accepted' || newStatus === 'Rejected') {
+                    const subject = `Update on your application for ${app.jobTitle} at ${companyInfo.name}`;
+                    let body = `Dear ${app.studentName},<br/><br/>`;
+                    let rawBody = `Dear ${app.studentName},\n\n`;
+
+                    if (newStatus === 'Accepted') {
+                        const msg = `Congratulations! We are pleased to inform you that you have been selected for the ${app.jobTitle} position at ${companyInfo.name}.<br/><br/>Next steps will be shared shortly.<br/><br/>Best,<br/>Recruiting Team`;
+                        body += msg;
+                        rawBody += msg.replace(/<br\/>/g, '\n');
+                    } else if (newStatus === 'Shortlisted') {
+                        const msg = `We are happy to inform you that your profile has been shortlisted for the ${app.jobTitle} position.<br/><br/>We will schedule an interview soon.<br/><br/>Best,<br/>Recruiting Team`;
+                        body += msg;
+                        rawBody += msg.replace(/<br\/>/g, '\n');
+                    } else if (newStatus === 'Rejected') {
+                        const msg = `Thank you for your interest in the ${app.jobTitle} position.<br/><br/>After careful consideration, we have decided not to proceed with your application at this time.<br/><br/>Best,<br/>Recruiting Team`;
+                        body += msg;
+                        rawBody += msg.replace(/<br\/>/g, '\n');
+                    }
+
+                    // 1. Try Firebase Extension (Backend Automation)
+                    await sendEmailViaFirebase(app.studentEmail, subject, body);
+
+                    // 2. Open Mail Client (Fallback/Client-side)
+                    // window.open(`mailto:${app.studentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(rawBody)}`, '_blank');
+                }
+
             } catch (e) { console.error(e) }
         }
 
@@ -199,7 +228,7 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
             setSelectedCandidate({ ...selectedCandidate, status: newStatus });
         }
 
-        setSaveMessage(`Status updated to ${newStatus}`);
+        setSaveMessage(`Status updated to ${newStatus} & Email Drafted`);
         setTimeout(() => setSaveMessage(''), 3000);
     };
 
@@ -291,7 +320,7 @@ This candidate applied before the resume upload feature was mandatory.
     }));
 
     return (
-        <div className="min-h-screen pt-20 pb-10 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-950 relative font-sans">
+        <div className="min-h-screen pt-20 pb-10 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#030712] relative font-sans">
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* ... Header and Navigation ... */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

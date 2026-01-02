@@ -158,7 +158,7 @@ const Login: React.FC<LoginProps> = ({ initialRole, onLogin, onBack }) => {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="glass-card rounded-[2rem] p-10 animate-slide-up shadow-2xl relative">
+        <div className="glass-prism rounded-[2rem] p-10 animate-slide-up shadow-2xl relative">
           <button
             onClick={onBack}
             className="absolute top-6 left-6 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors"

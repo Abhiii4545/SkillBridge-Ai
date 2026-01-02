@@ -184,10 +184,24 @@ export const matchInternships = async (profile: UserProfile, internships: Intern
 
     return internships.map(internship => {
         const rank = Array.isArray(rankings) ? rankings.find((r: any) => r.id === internship.id) : null;
+
+        // Fallback Logic: If AI misses an ID, calculate a basic score locally so UI doesn't hang on "Pending"
+        let fallbackScore = 60;
+        let fallbackReason = "Good potential match based on your profile.";
+
+        // Simple keyword heuristic
+        const userSkills = profile.skills.map(s => s.toLowerCase());
+        const jobSkills = internship.requiredSkills.map(s => s.toLowerCase());
+        const matchCount = jobSkills.filter(s => userSkills.includes(s)).length;
+        if (matchCount > 0) {
+            fallbackScore += (matchCount * 10);
+            fallbackReason = `Matches ${matchCount} of your skills (${jobSkills.filter(s => userSkills.includes(s)).join(', ')}).`;
+        }
+
         return {
             ...internship,
-            matchScore: rank?.matchScore || 0,
-            matchReason: rank?.matchReason || "Pending analysis..."
+            matchScore: rank?.matchScore || Math.min(fallbackScore, 95),
+            matchReason: rank?.matchReason || fallbackReason
         };
     }).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
 };

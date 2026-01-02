@@ -19,8 +19,8 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApply, myApplications, allInternships, initialTab = 'feed' }) => {
     const [activeTab, setActiveTab] = useState<'feed' | 'applications' | 'path' | 'resume'>('feed');
-    const [internships, setInternships] = useState<Internship[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [internships, setInternships] = useState<Internship[]>(allInternships);
+    const [loading, setLoading] = useState(false); // No longer blocking
 
     // Application Modal State
     const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
@@ -53,11 +53,13 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
         }
     }, [initialTab]);
 
-    // Whenever userProfile or allInternships changes, re-run matching
+    // Use simulated delay to show off the animation
     useEffect(() => {
         const fetchMatches = async () => {
-            setLoading(true);
+            // setLoading(true); // Don't block UI
             try {
+                // Removed artificial delay for instant matching
+
                 const matches = await matchInternships(userProfile, allInternships);
                 setInternships(matches);
             } catch (e) {
@@ -70,8 +72,6 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
 
         if (allInternships.length > 0) {
             fetchMatches();
-        } else {
-            setLoading(false);
         }
     }, [userProfile, allInternships]);
 
@@ -256,9 +256,9 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                         <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Welcome back, {firstName} 👋</h1>
                         <p className="text-slate-500 dark:text-slate-400 mt-1">Here's your career snapshot for today.</p>
                     </div>
-                    <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#101025] rounded-full border border-slate-200 dark:border-white/10 shadow-sm">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Open to opportunities</span>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#101025] rounded-full border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-all cursor-default group">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse group-hover:bg-green-400 transition-colors"></div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Open to opportunities</span>
                     </div>
                 </div>
 
@@ -489,44 +489,37 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile, onEditProfile, onApp
                                 </button>
                             </div>
 
-                            {loading ? (
-                                <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5">
-                                    <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-                                    <p className="text-slate-500 dark:text-slate-400">Gemini is finding the best matches for your profile...</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {filteredInternships.length > 0 ? (
-                                        filteredInternships.map((internship) => (
-                                            <InternshipCard
-                                                key={internship.id}
-                                                internship={internship}
-                                                onApply={(job) => setSelectedInternship(job)}
-                                                hasApplied={myApplications.some(app => app.jobId === internship.id)}
-                                            />
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-16 bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5">
-                                            <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <Filter className="w-8 h-8 text-slate-400" />
-                                            </div>
-                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">No matches found</h3>
-                                            <p className="text-slate-500 dark:text-slate-400">Try adjusting your filters.</p>
-                                            <button
-                                                onClick={() => {
-                                                    setFilterType('All');
-                                                    setFilterLocation('All');
-                                                    setSearchRole('');
-                                                    setMinStipend(0);
-                                                }}
-                                                className="mt-4 text-blue-600 font-medium hover:underline"
-                                            >
-                                                Clear all filters
-                                            </button>
+                            <div className="space-y-4">
+                                {filteredInternships.length > 0 ? (
+                                    filteredInternships.map((internship) => (
+                                        <InternshipCard
+                                            key={internship.id}
+                                            internship={internship}
+                                            onApply={(job) => setSelectedInternship(job)}
+                                            hasApplied={myApplications.some(app => app.jobId === internship.id)}
+                                        />
+                                    ))
+                                ) : (
+                                    <div className="text-center py-16 bg-white dark:bg-[#101025] rounded-[2rem] border border-slate-200 dark:border-white/5">
+                                        <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Filter className="w-8 h-8 text-slate-400" />
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">No matches found</h3>
+                                        <p className="text-slate-500 dark:text-slate-400">Try adjusting your filters.</p>
+                                        <button
+                                            onClick={() => {
+                                                setFilterType('All');
+                                                setFilterLocation('All');
+                                                setSearchRole('');
+                                                setMinStipend(0);
+                                            }}
+                                            className="mt-4 text-blue-600 font-medium hover:underline"
+                                        >
+                                            Clear all filters
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
